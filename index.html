@@ -34,6 +34,8 @@
   .wrap{width:100%;max-width:1020px;display:flex;flex-direction:column;gap:8px}
 
   /* ---------- HUD ---------- */
+  body.atHome .hud, body.atHome .controls{display:none}
+  .prow.hours{color:#6d675e;font-size:11px;border-bottom:1px solid rgba(0,0,0,.25)}
   .hud{
     display:grid;grid-template-columns:1.2fr 1fr .8fr 1fr;gap:1px;
     background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;
@@ -64,16 +66,72 @@
     text-align:center;padding:16px;overflow:auto;
     animation:fadeIn .3s ease;
   }
-  /* タイトルは奥で動いているラインを透かして見せる */
-  #ovTitle{
-    background:
-      radial-gradient(58% 52% at 50% 50%, rgba(8,12,16,.95) 0%, rgba(8,12,16,.88) 58%, rgba(8,12,16,.5) 100%),
-      linear-gradient(180deg, rgba(10,14,19,.35) 0%, rgba(8,12,16,.15) 40%, rgba(6,9,13,.55) 100%);
-    backdrop-filter:blur(1.5px);
+  /* ---------- ホーム（部屋） ---------- */
+  .overlay.home{
+    background:linear-gradient(180deg, rgba(6,8,12,.30) 0%, rgba(6,8,12,.14) 34%, rgba(4,6,9,.62) 100%);
+    backdrop-filter:none;align-items:stretch;padding:0;
   }
-  #ovTitle .card{
-    filter:drop-shadow(0 18px 40px rgba(0,0,0,.55));
+  .homewrap{display:flex;flex-direction:column;justify-content:space-between;width:100%;height:100%;padding:14px 16px}
+  .hometop{display:flex;flex-direction:column;gap:9px}
+  .brand{
+    font-size:clamp(21px,3.4vw,32px);font-weight:800;letter-spacing:.1em;line-height:1.1;
+    text-shadow:0 3px 10px rgba(0,0,0,.85), 0 0 26px rgba(0,0,0,.7);
   }
+  .brand small{display:block;font-size:9.5px;letter-spacing:.44em;color:var(--accent);font-weight:700;margin-bottom:5px}
+  .lifebar{
+    display:flex;gap:1px;background:rgba(43,56,68,.9);border:1px solid rgba(43,56,68,.9);border-radius:10px;
+    overflow:hidden;backdrop-filter:blur(3px);max-width:640px;
+  }
+  .li{background:rgba(19,26,33,.92);padding:6px 12px;display:flex;flex-direction:column;gap:2px;justify-content:center}
+  .li.grow{flex:1;min-width:150px}
+  .li .k{font-size:9px;letter-spacing:.14em;color:var(--sub);font-weight:700;white-space:nowrap}
+  .li .k b{color:var(--text);font-size:11px}
+  .li .v{font:800 19px/1 "Consolas",monospace}
+  .li .v.money{color:var(--accent)}
+  .xpbar{height:5px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:3px}
+  .xpbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#3fd18b,#9ae6bd);transition:width .4s}
+
+  .jobs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-content:end;margin:10px 0}
+  .job{
+    text-align:left;cursor:pointer;color:var(--text);
+    background:linear-gradient(180deg, rgba(24,32,41,.95), rgba(15,21,27,.97));
+    border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;
+    padding:11px 13px;display:flex;flex-direction:column;gap:6px;
+    box-shadow:0 10px 26px rgba(0,0,0,.5);transition:transform .1s, border-color .1s;
+    font-family:inherit;
+  }
+  .job:hover{transform:translateY(-3px);border-color:#4a5b6d}
+  .job:active{transform:translateY(0)}
+  .job[disabled]{opacity:.42;cursor:not-allowed;border-left-color:#54606c;transform:none}
+  .job .jn{font-size:14px;font-weight:800;letter-spacing:.02em}
+  .job .jd{font-size:11px;color:var(--sub);line-height:1.55;min-height:34px}
+  .job .jm{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+  .job .jw{font:800 17px/1 "Consolas",monospace;color:var(--accent)}
+  .job .jt{font-size:10px;color:var(--sub);letter-spacing:.06em}
+  .job .jt b{color:#ff8f84}
+  .job .lock{font-size:10px;color:#ff9a90;letter-spacing:.08em}
+
+  .homefoot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .notice{font-size:11.5px;color:#9fb1c3;letter-spacing:.04em;background:rgba(10,14,19,.7);
+          border-radius:8px;padding:7px 11px;backdrop-filter:blur(3px)}
+  .notice b{color:var(--accent)}
+  .btn.ghost{background:transparent;color:var(--sub);border:1px solid var(--line);box-shadow:none;
+             padding:11px 22px;font-size:12px;letter-spacing:.1em}
+  .btn.ghost:active{transform:translateY(2px)}
+
+  /* ---------- 給与明細 ---------- */
+  .payslip{
+    width:100%;background:#f6f3e8;color:#20242b;border-radius:6px;padding:12px 15px;
+    box-shadow:0 10px 26px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:2px;
+    font-family:"Consolas",monospace;
+  }
+  .prow{display:flex;justify-content:space-between;gap:14px;font-size:12.5px;padding:5px 0;
+        border-bottom:1px dashed rgba(0,0,0,.16)}
+  .prow b{font-weight:800}
+  .prow.minus b{color:#b8322a}
+  .prow.total{border-bottom:none;border-top:2px solid rgba(0,0,0,.6);margin-top:4px;padding-top:8px;font-size:15px}
+  .prow.total b{font-size:20px}
+  .endtext{font-size:13px;color:var(--sub);line-height:1.8;max-width:460px}
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
   .overlay.hide{display:none}
   .card{max-width:600px;width:100%;display:flex;flex-direction:column;align-items:center;gap:15px;margin:auto}
@@ -133,6 +191,12 @@
     .result{grid-template-columns:repeat(2,1fr)}
     .result div{padding:9px 4px}
     .result .v{font-size:21px}
+    .jobs{grid-template-columns:1fr;gap:7px}
+    .job{padding:9px 11px;gap:4px}
+    .job .jd{min-height:0;font-size:10.5px}
+    .homewrap{padding:10px 11px}
+    .li{padding:5px 9px}
+    .li .v{font-size:16px}
   }
 </style>
 </head>
@@ -151,47 +215,99 @@
   <div class="stage">
     <canvas id="cv"></canvas>
 
-    <div class="overlay" id="ovTitle">
-      <div class="card">
-        <div class="title"><small>S O R T I N G　L I N E</small>仕分けレーン</div>
-        <div class="rules">
-          <div class="rule">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffb020" stroke-width="1.8" stroke-linejoin="round"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>
-            <span>流れてくる荷物の伝票番号を読んで、<b>自分の担当番号だけ</b>をタップ／クリックで抜き取る。</span>
-          </div>
-          <div class="rule">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff5a4d" stroke-width="1.8" stroke-linecap="round"><path d="M12 9v4"/><circle cx="12" cy="16.6" r="1.1" fill="#ff5a4d" stroke="none"/><path d="M10.3 3.6 2.6 17.4a1.9 1.9 0 0 0 1.7 2.8h15.4a1.9 1.9 0 0 0 1.7-2.8L13.7 3.6a1.9 1.9 0 0 0-3.4 0z"/></svg>
-            <span>他人の荷物を取る／担当の荷物を<b>取りこぼす</b>とミス。3回でその日は終わり。</span>
-          </div>
-          <div class="rule">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3fd18b" stroke-width="1.8" stroke-linecap="round"><path d="M3 12h13M12 7l5 5-5 5"/><path d="M21 4v16"/></svg>
-            <span>ラインは止まらない。<b>紛らわしい番号</b>が増え、速度も上がり、担当は<b>最大3番号</b>まで増える。</span>
-          </div>
-          <div class="rule">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7f92a5" stroke-width="1.7" stroke-linejoin="round"><path d="M4 8.5 12 5l8 3.5v7L12 19l-8-3.5z"/><path d="M4 8.5 12 12l8-3.5"/><path d="M4.5 16.5h15" stroke="#ffb020"/></svg>
-            <span><b>重量物</b>（注意帯つきの大きい箱）は2回掴む。<b>速達</b>（赤いリボン）は2倍点。</span>
+    <!-- ホーム（じゅんの部屋） -->
+    <div class="overlay home" id="ovHome">
+      <div class="homewrap">
+        <div class="hometop">
+          <div class="brand"><small>A R U B A I T E R</small>アルバイターじゅん</div>
+          <div class="lifebar">
+            <div class="li"><span class="k">日目</span><span class="v" id="hDay">1</span></div>
+            <div class="li"><span class="k">時刻</span><span class="v" id="hClock">8:00</span></div>
+            <div class="li"><span class="k">所持金</span><span class="v money" id="hMoney">¥0</span></div>
+            <div class="li"><span class="k">残りシフト</span><span class="v" id="hShift">2</span></div>
+            <div class="li grow">
+              <span class="k">体力 <b id="hStam">100</b>　体調 <b id="hHealth">80</b></span>
+              <div class="xpbar"><i id="hStamBar"></i></div>
+              <div class="xpbar"><i id="hHealthBar"></i></div>
+            </div>
+            <div class="li grow">
+              <span class="k">アルバイターLv <b id="hLv">1</b>　時給 <b id="hRate">100</b>%</span>
+              <div class="xpbar"><i id="hXp"></i></div>
+            </div>
           </div>
         </div>
-        <button class="btn" id="btnStart">出　勤</button>
-        <div class="hint" id="bestTitle"></div>
+
+        <div class="jobs" id="jobs"></div>
+
+        <div class="homefoot">
+          <div class="notice" id="hNotice"></div>
+          <button class="btn ghost" id="btnSleep">今日を終える</button>
+        </div>
       </div>
     </div>
 
-    <div class="overlay hide" id="ovOver">
-      <div class="card" id="overCard">
-        <div class="title" id="overTitle">本日は上がり</div>
+    <!-- 勤務結果（給与明細） -->
+    <div class="overlay hide" id="ovShift">
+      <div class="card">
+        <div class="title" id="shiftTitle">勤務終了</div>
+        <div class="payslip">
+          <div class="prow hours"><span id="pyHours">勤務 8:00 〜 8:00</span><b></b></div>
+          <div class="prow"><span id="pyBase">処理 0個 × ¥0</span><b id="pyBaseV">¥0</b></div>
+          <div class="prow"><span id="pyCombo">コンボ手当</span><b id="pyComboV">¥0</b></div>
+          <div class="prow minus"><span id="pyMiss">ミス控除</span><b id="pyMissV">¥0</b></div>
+          <div class="prow total"><span>日給</span><b id="pyTotal">¥0</b></div>
+        </div>
         <div class="result">
-          <div><span class="k">SCORE</span><span class="v" id="rScore">0</span></div>
           <div><span class="k">処理数</span><span class="v" id="rCount">0</span></div>
           <div><span class="k">最高コンボ</span><span class="v" id="rCombo">0</span></div>
-          <div><span class="k">LEVEL</span><span class="v" id="rLevel">1</span></div>
           <div><span class="k">正確率</span><span class="v" id="rAcc">-</span></div>
-          <div><span class="k">誤仕分け</span><span class="v" id="rWrong">0</span></div>
-          <div><span class="k">取りこぼし</span><span class="v" id="rDrop">0</span></div>
           <div><span class="k">平均反応</span><span class="v" id="rReact">-</span></div>
         </div>
-        <div class="best" id="rBest"></div>
-        <button class="btn" id="btnRetry">も う 一 度</button>
+        <div class="best" id="rXp"></div>
+        <button class="btn" id="btnBackHome">部 屋 に 戻 る</button>
+      </div>
+    </div>
+
+    <!-- 夜の行動 -->
+    <div class="overlay hide home" id="ovNight">
+      <div class="homewrap">
+        <div class="hometop">
+          <div class="brand"><small>N I G H T</small><span id="nightTitle">1日目の夜</span></div>
+          <div class="notice" id="nightNote"></div>
+        </div>
+        <div class="jobs" id="nightList"></div>
+        <div class="homefoot"><div class="notice" id="nightHint">選んだ過ごし方で、明日の体力と体調が決まる。</div></div>
+      </div>
+    </div>
+
+    <!-- 一日の精算 -->
+    <div class="overlay hide" id="ovDay">
+      <div class="card">
+        <div class="title" id="dayTitle">1日目 終了</div>
+        <div class="payslip">
+          <div class="prow"><span>今日の稼ぎ</span><b id="dEarn">¥0</b></div>
+          <div class="prow minus"><span>食費・雑費</span><b id="dFood">¥0</b></div>
+          <div class="prow minus hide" id="dRentRow"><span>家賃</span><b id="dRent">¥0</b></div>
+          <div class="prow total"><span>残高</span><b id="dMoney">¥0</b></div>
+        </div>
+        <div class="best" id="dNote"></div>
+        <button class="btn" id="btnNextDay">次 の 日 へ</button>
+      </div>
+    </div>
+
+    <!-- エンディング -->
+    <div class="overlay hide" id="ovEnd">
+      <div class="card">
+        <div class="title" id="endTitle">おわり</div>
+        <div class="endtext" id="endText"></div>
+        <div class="result">
+          <div><span class="k">生き延びた日数</span><span class="v" id="eDays">0</span></div>
+          <div><span class="k">最終所持金</span><span class="v" id="eMoney">¥0</span></div>
+          <div><span class="k">アルバイターLv</span><span class="v" id="eLv">1</span></div>
+          <div><span class="k">総処理数</span><span class="v" id="eTotal">0</span></div>
+        </div>
+        <div class="best" id="eBest"></div>
+        <button class="btn" id="btnRestart">は じ め か ら</button>
       </div>
     </div>
   </div>
@@ -281,6 +397,21 @@ function layout(){
 // ============================================================
 //  設定
 // ============================================================
+// ============================================================
+//  バイト先
+// ============================================================
+const JOBS = [
+  { id:'sort', name:'宅配 仕分けセンター', short:'仕分け', pay:135, lives:3, stamina:38,
+    speed:1.00, spawnMul:1.00, rule:'number', minLv:1,
+    desc:'伝票の担当番号を読んで、自分の番号だけを抜く。まずはここから。' },
+  { id:'fruit', name:'青果市場 選果ライン', short:'選果', pay:98, lives:4, stamina:30,
+    speed:0.88, spawnMul:0.94, rule:'rotten', minLv:1,
+    desc:'傷んだ果物だけを弾く。番号は読まなくていいが、傷みは見落としやすい。' },
+  { id:'tech', name:'精密機器 出荷倉庫', short:'精密', pay:215, lives:2, stamina:48,
+    speed:1.22, spawnMul:1.06, rule:'number', fragile:true, minLv:3,
+    desc:'担当番号を抜く。全部が取扱注意で2回掴む。ミスは2回まで。時給は一番いい。' },
+];
+
 const CFG = {
   baseSpeed: 92,
   speedPerLevel: 15,
@@ -340,7 +471,7 @@ const SFX = {
 //  状態
 // ============================================================
 const S = {
-  running:false, paused:false,
+  running:false, paused:false, scene:'room', maxLives:3,
   t:0, spawnTimer:0,
   boxes:[], flying:[], fx:[], texts:[], rings:[],
   score:0, dispScore:0, combo:0, bestCombo:0,
@@ -455,11 +586,10 @@ function addCode(){
 // ---- HUD ----------------------------------------------------
 const $ = id => document.getElementById(id);
 function renderLives(){
-  const used = CFG.maxLives - S.lives;
-  $('missNum').textContent = used;
+  $('missNum').textContent = S.maxLives - S.lives;
   $('missRow').classList.toggle('danger', S.lives === 1);
   const el = $('lives'); el.innerHTML = '';
-  for(let i=0;i<CFG.maxLives;i++){
+  for(let i=0;i<S.maxLives;i++){
     const lost = i >= S.lives;
     el.insertAdjacentHTML('beforeend',
       `<svg viewBox="0 0 24 24" class="${lost?'lost':''}" fill="none" stroke="${lost?'#7f92a5':'#ffb020'}" stroke-width="1.7" stroke-linejoin="round">
@@ -491,22 +621,32 @@ function spawn(){
   const mine = S.sinceMine >= 4 || Math.random() < CFG.mineRate;
   S.sinceMine = mine ? 0 : S.sinceMine + 1;
 
-  let code;
-  if(mine) code = pick(S.codes);
-  else{
+  const rotten = JOB && JOB.rule === 'rotten';
+  let code = '', rot = 0;
+  if(rotten){
+    // 傷み具合。0.5以上が「弾くべき品」。レベルが上がるほど境目が際どくなる
+    const edge = Math.max(.06, .3 - S.level*.03);
+    rot = mine ? .5 + edge + Math.random()*(.45-edge)
+               : Math.max(0, .5 - edge - Math.random()*.45);
+    code = String(100 + rnd(900));
+  }else if(mine){
+    code = pick(S.codes);
+  }else{
     // 画面上に同じ番号が並ぶと読む負荷が単調になるので避ける
     const avoid = S.codes.concat(S.boxes.map(b => b.code));
     const cr = Math.min(.82, .3 + S.level*.07);
     code = Math.random() < cr ? confusable(pick(S.codes), avoid) : newCode(avoid);
   }
-  const large = S.level >= 3 && Math.random() < .15;
-  const express = !large && Math.random() < .12;
+  const large   = !rotten && S.level >= 3 && Math.random() < .15;
+  const express = !rotten && !large && Math.random() < .12;
+  const fragile = !!(JOB && JOB.fragile);
 
   S.boxes.push({
-    id:++seq, lane, code, mine, large, express,
+    id:++seq, lane, code, mine, large, express, rot, fragile,
     x: LAY.W + 110, y: LAY.laneY[lane],
     w: large ? LAY.lgW : LAY.boxW,
     h: large ? LAY.lgH : LAY.boxH,
+    kind: rotten ? 'crate' : 'box',
     tilt: (Math.random()-.5)*.10,
     tape: .36 + Math.random()*.28,
     hits:0, judged:false, hitFx:0, wrongFx:0,
@@ -553,7 +693,7 @@ function tryPick(b){
   if(!b || b.judged) return;
   if(b.mine){
     b.hits++;
-    if(b.hits < (b.large ? 2 : 1)){
+    if(b.hits < ((b.large || b.fragile) ? 2 : 1)){
       b.hitFx = 1; SFX.half();
       floatText(b.x, b.y - b.h/2 - 12, 'もう一押し', '#ffb020', 17);
       ring(b.x, b.y, '255,176,32');
@@ -671,8 +811,9 @@ document.addEventListener('visibilitychange', () => {
 const speedNow = () => Math.min(
   CFG.maxSpeed,
   CFG.baseSpeed + (S.level-1)*CFG.speedPerLevel + S.clearedInLevel*CFG.speedInLevel
-) * LAY.k;
-const spawnInterval = () => Math.max(CFG.minSpawn, CFG.baseSpawn - (S.level-1)*CFG.spawnPerLevel);
+) * LAY.k * (JOB ? JOB.speed : 1);
+const spawnInterval = () =>
+  Math.max(CFG.minSpawn, CFG.baseSpawn - (S.level-1)*CFG.spawnPerLevel) * (JOB ? JOB.spawnMul : 1);
 
 function update(dt){
   S.t += dt;
@@ -681,6 +822,10 @@ function update(dt){
   $('score').textContent = Math.round(S.dispScore);
 
   if(S.running && !S.paused){
+    // 勤務中は時計が進む。長く続くほど稼げるが、その分夜が短くなる
+    LIFE.clock += dt * CLOCK_RATE;
+    if(LIFE.clock >= LAST_TRAIN && !S.endReason){ S.endReason = 'lasttrain'; gameOver(); }
+
     S.spawnTimer -= dt*1000;
     if(S.spawnTimer <= 0){
       spawn();
@@ -707,8 +852,8 @@ function update(dt){
     }
   }
 
-  // タイトル画面：ラインだけが動き続けるアトラクト表示
-  if(!S.running){
+  // 勤務前後：ラインだけが動き続けるアトラクト表示
+  if(!S.running && S.scene === 'line'){
     S.demoTimer -= dt*1000;
     if(S.demoTimer <= 0){ spawnDemo(); S.demoTimer = 760 + Math.random()*700; }
     for(const b of S.demo) b.x -= 62*dt;
@@ -995,10 +1140,42 @@ function drawBoard(){
 
   ctx.textAlign = 'left';
   ctx.fillStyle = '#5d7085'; ctx.font = '700 10px "Yu Gothic UI", sans-serif';
-  ctx.fillText('本日の担当', portrait ? 16 : 22, labelY);
+  ctx.fillText(JOB ? JOB.short : '本日の担当', portrait ? 16 : 22, labelY);
+  if(JOB && !portrait){
+    ctx.fillStyle = '#33414f'; ctx.font = '700 9px Consolas, monospace';
+    ctx.fillText(hhmm(LIFE.clock), 22, labelY + 16);
+  }
+
+  // 選果ラインは番号ではなく「傷み品を弾く」
+  if(JOB && JOB.rule === 'rotten'){
+    const cw = 176, ch = cardH, cy = cardY;
+    ctx.save();
+    ctx.translate(x + cw/2, cy + ch/2);
+    ctx.fillStyle = 'rgba(0,0,0,.45)'; rr(-cw/2+3,-ch/2+5,cw,ch,3); ctx.fill();
+    ctx.fillStyle = '#f6f3e8'; rr(-cw/2,-ch/2,cw,ch,3); ctx.fill();
+    ctx.strokeStyle = 'rgba(190,60,45,.45)'; ctx.lineWidth = 1.2;
+    rr(-cw/2+5,-ch/2+5,cw-10,ch-10,2); ctx.stroke();
+    // 傷んだりんごのアイコン
+    ctx.save();
+    ctx.translate(-cw/2+30, 1);
+    ctx.fillStyle = '#c4433a'; ctx.beginPath(); ctx.arc(0,0,15,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#3f6b2f'; ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.moveTo(0,-14); ctx.lineTo(3,-20); ctx.stroke();
+    ctx.fillStyle = 'rgba(58,32,16,.9)';
+    ctx.beginPath(); ctx.arc(-4,2,5,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(5,-3,3.4,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(3,7,2.6,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = '#15181d'; ctx.textAlign = 'left';
+    ctx.font = '800 21px "Yu Gothic UI", sans-serif';
+    ctx.fillText('傷み品を弾く', -cw/2+52, -4);
+    ctx.fillStyle = '#7a7263'; ctx.font = '700 11px "Yu Gothic UI", sans-serif';
+    ctx.fillText('黒い斑点が大きいものだけ', -cw/2+52, 17);
+    ctx.restore();
+  }
 
   const pulse = S.boardPulse > 0 ? (Math.sin(S.t*22)*.5+.5) * Math.min(1, S.boardPulse*1.6) : 0;
-  for(const c of S.codes){
+  for(const c of (JOB && JOB.rule === 'rotten' ? [] : S.codes)){
     ctx.save();
     ctx.translate(x + cardW/2, cardY + cardH/2);
     ctx.rotate(-.012);
@@ -1108,13 +1285,63 @@ function drawCage(){
   ctx.beginPath(); ctx.arc(-w/2+12, h/2+5, 5, 0, Math.PI*2); ctx.fill();
   ctx.beginPath(); ctx.arc(w/2-12, h/2+5, 5, 0, Math.PI*2); ctx.fill();
   // 行先札
-  const label = S.codes.join('/') || '---';
-  const lf = S.codes.length >= 3 ? 9 : S.codes.length === 2 ? 10.5 : 12;
-  const lw = S.codes.length >= 3 ? 86 : S.codes.length === 2 ? 66 : 52;
+  const label = (JOB && JOB.rule === 'rotten') ? '傷み品' : (S.codes.join('/') || '---');
+  const lf = label.length >= 11 ? 9 : label.length >= 7 ? 10.5 : 12;
+  const lw = label.length >= 11 ? 86 : label.length >= 7 ? 66 : 52;
   ctx.fillStyle = '#f6f3e8'; rr(-lw/2, -h/2-18, lw, 16, 2); ctx.fill();
   ctx.fillStyle = '#15181d'; ctx.font = `800 ${lf}px Consolas, monospace`; ctx.textAlign = 'center';
   ctx.fillText(label, 0, -h/2-9.5);
   ctx.restore();
+}
+
+/** 青果の木箱（傷み具合が判別対象） */
+function drawCrate(b){
+  const w = b.w, h = b.h;
+  // 木箱
+  ctx.fillStyle = 'rgba(0,0,0,.42)';
+  ctx.beginPath(); ctx.ellipse(5, h/2+7, w*.45, 8, 0, 0, Math.PI*2); ctx.fill();
+  const g = ctx.createLinearGradient(-w/2,-h/2,w/2,h/2);
+  g.addColorStop(0,'#c79a5f'); g.addColorStop(1,'#8f6534');
+  ctx.fillStyle = g; rr(-w/2,-h/2,w,h,3); ctx.fill();
+  ctx.strokeStyle = 'rgba(70,44,18,.75)'; ctx.lineWidth = 1.6; rr(-w/2,-h/2,w,h,3); ctx.stroke();
+  // 板の隙間
+  ctx.fillStyle = 'rgba(50,32,14,.35)';
+  ctx.fillRect(-w/2+3, -h/2+3, w-6, 3);
+  ctx.fillRect(-w/2+3,  h/2-9, w-6, 3);
+
+  // 果物3つ
+  const r = Math.min(h*.27, 17);
+  for(let i=0;i<3;i++){
+    const cx = (i-1) * (w*.27), cy = 2 + ((b.id+i)%2 ? -1.5 : 1.5);
+    const fg = ctx.createRadialGradient(cx-r*.32, cy-r*.36, r*.15, cx, cy, r);
+    const dull = b.rot*.5;
+    fg.addColorStop(0, `rgb(${240-dull*70|0},${120-dull*40|0},${88-dull*30|0})`);
+    fg.addColorStop(1, `rgb(${176-dull*70|0},${48-dull*20|0},${40-dull*14|0})`);
+    ctx.fillStyle = fg;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
+    // ヘタ
+    ctx.strokeStyle = '#3f6b2f'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx, cy-r+1); ctx.lineTo(cx+2, cy-r-4); ctx.stroke();
+    // 傷み（黒い斑点）
+    if(b.rot > .04){
+      const n = Math.max(1, Math.round(b.rot*5));
+      for(let k=0;k<n;k++){
+        const a = ((b.id*37 + i*53 + k*97) % 360) * Math.PI/180;
+        const d = r*.52 * (((b.id*13 + k*29) % 100)/100);
+        const sr = r * (.10 + b.rot*.30) * (.7 + ((k*17)%10)/20);
+        ctx.fillStyle = `rgba(58,32,16,${.55 + b.rot*.4})`;
+        ctx.beginPath(); ctx.arc(cx+Math.cos(a)*d, cy+Math.sin(a)*d, sr, 0, Math.PI*2); ctx.fill();
+      }
+    }
+    // ハイライト
+    ctx.fillStyle = 'rgba(255,255,255,.4)';
+    ctx.beginPath(); ctx.ellipse(cx-r*.34, cy-r*.4, r*.2, r*.13, -.6, 0, Math.PI*2); ctx.fill();
+  }
+  // 手前の板
+  ctx.fillStyle = 'rgba(199,154,95,.95)';
+  ctx.fillRect(-w/2+2, h/2-13, w-4, 11);
+  ctx.strokeStyle = 'rgba(70,44,18,.6)'; ctx.lineWidth = 1.2;
+  ctx.strokeRect(-w/2+2.5, h/2-12.5, w-5, 10);
 }
 
 function drawBox(b, scale=1, rot=0, alpha=1){
@@ -1125,6 +1352,20 @@ function drawBox(b, scale=1, rot=0, alpha=1){
   ctx.rotate(rot);
   ctx.scale(scale, scale);
   if(b.wrongFx > 0) ctx.translate(Math.sin(b.wrongFx*42)*5, 0);
+
+  if(b.kind === 'crate'){
+    drawCrate(b);
+    if(b.hitFx > 0){ ctx.fillStyle = `rgba(255,255,255,${b.hitFx*.32})`; rr(-w/2,-h/2,w,h,3); ctx.fill(); }
+    if(b.wrongFx > 0){
+      ctx.fillStyle = `rgba(255,60,50,${b.wrongFx*.38})`; rr(-w/2,-h/2,w,h,3); ctx.fill();
+      ctx.strokeStyle = `rgba(255,90,80,${b.wrongFx})`; ctx.lineWidth = 5; ctx.lineCap='round';
+      const rr2 = Math.min(w,h)*.28;
+      ctx.beginPath(); ctx.moveTo(-rr2,-rr2); ctx.lineTo(rr2,rr2); ctx.moveTo(rr2,-rr2); ctx.lineTo(-rr2,rr2); ctx.stroke();
+      ctx.lineCap='butt';
+    }
+    ctx.restore();
+    return;
+  }
 
   ctx.fillStyle = 'rgba(0,0,0,.42)';
   ctx.beginPath(); ctx.ellipse(5, h/2+7, w*.45, 8, 0, 0, Math.PI*2); ctx.fill();
@@ -1174,6 +1415,20 @@ function drawBox(b, scale=1, rot=0, alpha=1){
     ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(10,8); ctx.lineTo(-10,8); ctx.closePath(); ctx.stroke();
     ctx.fillStyle = '#5d3a18'; ctx.font = '700 10px "Yu Gothic UI", sans-serif'; ctx.textAlign='center';
     ctx.fillText('重', 0, 3);
+    ctx.restore();
+  }
+
+  // 取扱注意（精密機器）
+  if(b.fragile){
+    ctx.save();
+    ctx.strokeStyle = 'rgba(206,52,44,.75)'; ctx.lineWidth = 2;
+    rr(-w/2+4,-h/2+4,w-8,h-8,3); ctx.stroke();
+    ctx.translate(-w/2+14, h/2-17);
+    ctx.strokeStyle = '#c1352c'; ctx.lineWidth = 1.7; ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.moveTo(-4,-8); ctx.lineTo(4,-8); ctx.lineTo(2,-2); ctx.lineTo(2,4);
+    ctx.moveTo(-3,5); ctx.lineTo(5,5);
+    ctx.stroke(); ctx.lineCap='butt';
     ctx.restore();
   }
 
@@ -1254,8 +1509,163 @@ function drawBanner(){
   ctx.restore();
 }
 
+// ============================================================
+//  じゅんの部屋（ドット絵）
+// ============================================================
+const RW = 320, RH = 200;
+let roomCv = null;
+function buildRoom(){
+  roomCv = document.createElement('canvas');
+  roomCv.width = RW; roomCv.height = RH;
+  const r = roomCv.getContext('2d');
+  const P = (x,y,w,h,c) => { r.fillStyle = c; r.fillRect(x|0, y|0, w|0, h|0); };
+  const PC = (cx,cy,rad,c) => {           // ドット絵の円
+    r.fillStyle = c;
+    for(let y=-rad;y<=rad;y++){
+      const w = Math.floor(Math.sqrt(rad*rad - y*y));
+      r.fillRect(cx-w, cy+y, w*2+1, 1);
+    }
+  };
+
+  // ---- 壁と天井 ----
+  P(0,0,RW,RH,'#3b3542');
+  P(0,0,RW,14,'#2a2530');                                  // 天井
+  P(0,14,RW,126,'#6a6274');                                // 壁
+  for(let x=0;x<RW;x+=8) P(x,14,1,126,'rgba(255,255,255,.025)');   // 壁紙の縦筋
+  P(0,124,RW,4,'#5b5466');                                 // 汚れ
+  P(0,132,RW,8,'#4a4453');                                 // 巾木
+  P(0,140,RW,2,'#332e3b');
+
+  // ---- 床（フローリング） ----
+  P(0,142,RW,58,'#7a5738');
+  for(let y=142;y<RH;y+=7) P(0,y,RW,1,'#664628');
+  for(let y=142;y<RH;y+=7){
+    for(let x=(y/7|0)%2*22; x<RW; x+=44) P(x,y,1,7,'#5e401f');
+  }
+  P(0,142,RW,3,'rgba(255,214,150,.10)');
+
+  // ---- 窓 ----
+  P(20,26,78,68,'#332e3b');
+  P(23,29,72,62,'#151d2b');
+  // 夜景
+  for(let i=0;i<46;i++){
+    const x = 24 + (i*37)%68, y = 30 + (i*23)%56;
+    const c = i%7===0 ? '#ffd88a' : i%5===0 ? '#9ad0ff' : 'rgba(255,240,200,.5)';
+    P(x,y,1,1,c);
+  }
+  P(23,72,72,19,'#1b2536');                                 // 遠くのビル
+  P(30,64,10,27,'#222c3e'); P(46,68,8,23,'#1e2839'); P(64,60,12,31,'#232d40');
+  P(33,70,2,2,'#ffd88a'); P(50,74,2,2,'#ffe4a0'); P(68,66,2,2,'#ffd88a'); P(70,78,2,2,'#9ad0ff');
+  P(58,29,2,62,'#332e3b'); P(23,58,72,2,'#332e3b');         // 桟
+  // カーテン
+  P(14,24,12,74,'#8a7a9e'); P(92,24,12,74,'#8a7a9e');
+  for(let y=24;y<98;y+=3){ P(17,y,2,2,'#77688b'); P(95,y,2,2,'#77688b'); }
+  P(12,22,96,4,'#4a4453');
+
+  // ---- 裸電球 ----
+  P(160,14,1,20,'#2a2530');
+  PC(160,38,5,'#ffe9b0'); PC(160,37,3,'#fff6d8');
+  r.globalAlpha = .12; PC(160,40,26,'#ffd88a'); r.globalAlpha = .07; PC(160,42,44,'#ffd88a'); r.globalAlpha = 1;
+
+  // ---- 壁のカレンダー ----
+  P(190,26,38,34,'#efe9de'); P(190,26,38,7,'#c9483c');
+  for(let y=36;y<58;y+=5) for(let x=193;x<225;x+=5) P(x,y,3,3,'#c8c0b4');
+  P(208,46,3,3,'#c9483c'); P(213,46,3,3,'#c9483c'); P(218,46,3,3,'#c9483c');
+  // シフト表
+  P(236,24,46,30,'#e6e0d4');
+  for(let y=29;y<50;y+=4) P(239,y,34,1,'#9a9287');
+  P(239,29,20,1,'#c9483c');
+  P(232,22,4,4,'#8d8494');
+
+  // ---- 壁時計 ----
+  PC(300,36,11,'#d8d2c6'); PC(300,36,9,'#f3efe6');
+  P(300,29,1,8,'#33303a'); P(300,36,6,1,'#c9483c'); P(299,35,3,3,'#33303a');
+
+  // ---- ハンガーラック（壁側・TVの上） ----
+  P(110,44,2,52,'#8d8494'); P(150,44,2,52,'#8d8494'); P(110,44,42,2,'#a49bab');
+  P(116,46,16,26,'#cfd6de'); P(116,46,16,4,'#b8c0ca');     // シャツ
+  P(134,46,14,30,'#d8c9a0'); P(134,46,14,4,'#c2b48c');     // 作業着
+  P(122,72,4,10,'#cfd6de');
+
+  // ---- 段ボール積み（床に立てる） ----
+  const box = (x,y,w,h) => {
+    P(x,y,w,h,'#b8874f'); P(x,y,w,2,'#c99a5f'); P(x,y+h-2,w,2,'#9c6f3c');
+    P(x+w/2-2,y,4,h,'#cdaa7a'); P(x+4,y+4,w-8,1,'#8f6634');
+    P(x+w-14,y+h-10,10,7,'#f2ece0'); P(x+w-12,y+h-8,6,1,'#7a7268');
+  };
+  box(270,100,42,24); box(266,124,48,26); box(262,150,54,28);
+  P(262,178,54,2,'rgba(0,0,0,.3)');
+
+  // ---- 布団（万年床） ----
+  P(152,152,104,42,'rgba(0,0,0,.25)');
+  P(154,150,100,40,'#ded3bd');                              // 敷布団
+  P(160,158,88,30,'#7fa0c4');                               // 掛け布団
+  for(let x=162;x<246;x+=9) P(x,160,2,26,'#6e8fb3');
+  P(162,152,30,12,'#f0e8da');                               // 枕
+  P(164,154,26,2,'#dcd2c2');
+
+  // ---- ちゃぶ台 ----
+  P(18,156,84,6,'#8b6a45'); P(18,156,84,2,'#a07c53');
+  P(22,162,4,18,'#6f5335'); P(94,162,4,18,'#6f5335');
+  // カップ麺
+  P(30,144,14,12,'#e9e2d2'); P(30,147,14,3,'#c9483c'); P(29,143,16,2,'#f4efe3');
+  // 缶
+  P(54,146,7,10,'#b6bec8'); P(54,149,7,2,'#c9483c');
+  P(68,148,9,8,'#8d8494');                                  // リモコン
+  P(68,149,3,1,'#c9483c');
+  P(82,146,12,10,'#e4e0d6'); P(84,148,8,2,'#c9483c');       // コンビニ袋
+
+  // ---- カラーボックス＋テレビ ----
+  P(106,118,48,24,'#6b6a70'); P(106,118,48,2,'#7d7c84'); P(106,131,48,1,'#5a5960');
+  P(110,120,18,10,'#4e4d55'); P(132,120,18,10,'#4e4d55');   // 雑誌の山
+  P(110,120,18,2,'#c9483c'); P(132,120,18,2,'#5f8ac2');
+  P(110,94,40,24,'#57565e');                                // ブラウン管
+  P(113,97,34,18,'#2b3b4a'); P(113,97,34,3,'rgba(255,255,255,.10)');
+  P(126,90,2,4,'#8d8494'); P(120,88,14,2,'#8d8494');        // アンテナ
+
+  // ---- 床の小物 ----
+  P(140,176,11,8,'#8d8494');                                // 目覚まし時計
+  P(141,177,9,6,'#f3efe6'); P(143,179,1,2,'#33303a'); P(145,180,3,1,'#c9483c');
+  P(108,168,22,11,'#4a4453'); P(106,166,26,3,'#565062');    // ゴミ箱
+  P(112,161,5,6,'#e4e0d6'); P(120,162,4,5,'#e4e0d6');
+  P(14,186,26,9,'#3f3a49'); P(16,184,10,3,'#cfd6de');       // スニーカー
+  P(28,184,10,3,'#cfd6de');
+  P(46,182,30,12,'#5a4a63'); P(48,180,26,3,'#6b5a75');      // 洗濯物カゴ
+  P(52,176,8,5,'#cfd6de'); P(62,177,7,4,'#d8c9a0');
+
+  // ---- 電球の光を床に落とす ----
+  r.globalAlpha = .07;
+  for(let i=0;i<7;i++) P(160-90-i*3, 142+i*8, 180+i*6, 8, '#ffd88a');
+  r.globalAlpha = 1;
+  // 四隅を落とす
+  r.globalAlpha = .18;
+  P(0,0,RW,10,'#000'); P(0,RH-10,RW,10,'#000'); P(0,0,10,RH,'#000'); P(RW-10,0,10,RH,'#000');
+  r.globalAlpha = 1;
+}
+
+function drawRoom(){
+  if(!roomCv) buildRoom();
+  const {W,H} = LAY;
+  const scale = Math.max(W/RW, H/RH);
+  const dw = Math.ceil(RW*scale), dh = Math.ceil(RH*scale);
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = '#2a2530'; ctx.fillRect(0,0,W,H);
+  ctx.drawImage(roomCv, (W-dw)/2 | 0, H-dh, dw, dh);
+
+  // 電球のゆらぎ
+  const flick = .82 + Math.sin(S.t*2.1)*.05 + Math.sin(S.t*7.3)*.03;
+  const g = ctx.createRadialGradient(W*.5, H*.18, 10, W*.5, H*.3, H*.75);
+  g.addColorStop(0, `rgba(255,214,150,${.12*flick})`);
+  g.addColorStop(1, 'rgba(255,190,120,0)');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  ctx.restore();
+  drawVignette();
+}
+
 function render(){
   const {W,H} = LAY;
+  if(S.scene === 'room'){ drawRoom(); return; }
   ctx.save();
   if(S.shake > 0) ctx.translate((Math.random()-.5)*15*S.shake, (Math.random()-.5)*15*S.shake);
 
@@ -1298,62 +1708,377 @@ function loop(now){
 // ============================================================
 //  進行
 // ============================================================
+const yen = n => '¥' + Math.round(n).toLocaleString('ja-JP');
+const SAVE_KEY = 'arubaiter.save';
+const REC_KEY  = 'arubaiter.record';
+
+const CLOCK_RATE = 1.5;              // 実時間1秒 = 作中1分半
+const DAY_START  = 8*60;             // 8:00 起床
+const LAST_TRAIN = 23*60;            // これを過ぎるとラインを上がらされる
+const hhmm = m => `${Math.floor(m/60)}:${String(Math.round(m)%60).padStart(2,'0')}`;
+
+const LIFE = {
+  day:1, money:38000, stamina:100, health:80, clock:DAY_START, shifts:0, lv:1, xp:0,
+  earnedToday:0, totalCleared:0, totalEarned:0, restDays:0,
+  cheapMeal:false, todayBonus:0, event:null, sick:false, ended:false,
+};
+const RULES = {
+  days:30, maxShifts:2,
+  food:1200, cheapFood:600,
+  rentDay:25, rent:55000,
+  utilDay:20, util:8400,
+  goal:100000,
+};
+const xpNeed = lv => 130 + (lv-1)*110;
+const wageRate = () => 1 + (LIFE.lv-1)*0.09;
+
+function saveLife(){
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify(LIFE)); }catch(e){}
+}
+function loadLife(){
+  try{
+    const raw = localStorage.getItem(SAVE_KEY);
+    if(raw) Object.assign(LIFE, JSON.parse(raw));
+  }catch(e){}
+}
+function record(){ try{ return JSON.parse(localStorage.getItem(REC_KEY)) || null; }catch(e){ return null; } }
+function saveRecord(r){ try{ localStorage.setItem(REC_KEY, JSON.stringify(r)); }catch(e){} }
+
+// ---- 画面 ----------------------------------------------------
+const SCREENS = ['ovHome','ovShift','ovDay','ovNight','ovEnd'];
+function show(id){
+  SCREENS.forEach(s => $(s).classList.toggle('hide', s !== id));
+  if(id) $(id).scrollTop = 0;
+}
+function hideAll(){ SCREENS.forEach(s => $(s).classList.add('hide')); }
+
+// ---- 朝のできごと --------------------------------------------
+const EVENTS = [
+  {w:34, t:null},
+  {w:10, t:'財布を拾って交番に届けた。持ち主から謝礼をもらった。', money:3000},
+  {w:10, t:'風邪をひいた。体が重い。', stamina:-28},
+  {w:9,  t:'現場の主任に「お前、目がいいな」と褒められた。今日は時給アップ。', bonus:.15},
+  {w:8,  t:'終電を逃してタクシーで帰った。財布が痛い。', money:-2800},
+  {w:8,  t:'よく眠れた。体が軽い。', stamina:15},
+  {w:7,  t:'同じ現場の人にコーヒーを奢ってもらった。', stamina:8},
+  {w:7,  t:'スマホを落として画面を割った。修理代が飛んだ。', money:-6800},
+  {w:7,  t:'求人誌で時給のいい話を見つけた。やる気が出る。', xp:80},
+];
+function rollEvent(){
+  const total = EVENTS.reduce((s,e)=>s+e.w, 0);
+  let r = Math.random()*total;
+  for(const e of EVENTS){ r -= e.w; if(r <= 0) return e; }
+  return EVENTS[0];
+}
+function applyEvent(e){
+  LIFE.event = e.t;
+  LIFE.todayBonus = e.bonus || 0;
+  if(e.money)   LIFE.money += e.money;
+  if(e.stamina) LIFE.stamina = clamp(LIFE.stamina + e.stamina, 5, 100);
+  if(e.health)  LIFE.health  = clamp(LIFE.health + e.health, 0, 100);
+  if(e.xp)      gainXp(e.xp);
+}
+
+/** 朝：体調しだいで寝込む。倒れると病院代がかかる */
+function rollMorning(){
+  LIFE.sick = false;
+  if(LIFE.health < 14){
+    LIFE.money -= 12000;
+    LIFE.health = clamp(LIFE.health + 42, 0, 100);
+    LIFE.stamina = clamp(LIFE.stamina + 30, 0, 100);
+    LIFE.sick = true; LIFE.restDays++;
+    LIFE.event = '朝、立ち上がれなかった。病院に運ばれて点滴。医療費 ' + yen(12000) + '。今日は働けない。';
+    LIFE.todayBonus = 0;
+    return;
+  }
+  const p = LIFE.health < 40 ? (40 - LIFE.health) / 40 * 0.75 : 0;
+  if(Math.random() < p){
+    LIFE.sick = true; LIFE.restDays++;
+    LIFE.health = clamp(LIFE.health + 16, 0, 100);
+    LIFE.event = '熱っぽくて体が動かない。今日は休むしかない。家賃も食費も待ってはくれない。';
+    LIFE.todayBonus = 0;
+    return;
+  }
+  applyEvent(rollEvent());
+}
+
+function gainXp(n){
+  LIFE.xp += n;
+  let up = 0;
+  while(LIFE.xp >= xpNeed(LIFE.lv)){ LIFE.xp -= xpNeed(LIFE.lv); LIFE.lv++; up++; }
+  return up;
+}
+
+// ---- ホーム --------------------------------------------------
+function renderHome(){
+  S.scene = 'room'; S.running = false;
+  $('hDay').textContent   = LIFE.day;
+  $('hClock').textContent = hhmm(LIFE.clock);
+  $('hMoney').textContent = yen(LIFE.money);
+  $('hMoney').style.color = LIFE.money < 0 ? 'var(--ng)' : '';
+  $('hShift').textContent = (RULES.maxShifts - LIFE.shifts) + ' / ' + RULES.maxShifts;
+  $('hLv').textContent    = LIFE.lv;
+  $('hRate').textContent  = Math.round(wageRate()*100);
+  $('hXp').style.width    = Math.min(100, LIFE.xp / xpNeed(LIFE.lv) * 100) + '%';
+  $('hStam').textContent  = Math.round(LIFE.stamina);
+  $('hStamBar').style.width = LIFE.stamina + '%';
+  $('hStamBar').style.background = LIFE.stamina < 30
+    ? 'linear-gradient(90deg,#ff5a4d,#ff9a90)' : 'linear-gradient(90deg,#ffb020,#ffd479)';
+  $('hHealth').textContent = Math.round(LIFE.health);
+  $('hHealthBar').style.width = LIFE.health + '%';
+  $('hHealthBar').style.background = LIFE.health < 40
+    ? 'linear-gradient(90deg,#ff5a4d,#ff9a90)' : 'linear-gradient(90deg,#3fd18b,#9ae6bd)';
+
+  const el = $('jobs'); el.innerHTML = '';
+  for(const j of JOBS){
+    const locked  = LIFE.lv < j.minLv;
+    const noShift = LIFE.shifts >= RULES.maxShifts;
+    const tired   = LIFE.stamina < Math.round(j.stamina*.5);
+    const late    = LIFE.clock > LAST_TRAIN - 60;
+    const dis     = LIFE.sick || locked || noShift || tired || late;
+    const wage    = Math.round(j.pay * wageRate() * (1 + LIFE.todayBonus));
+    const b = document.createElement('button');
+    b.className = 'job'; b.disabled = dis;
+    b.innerHTML =
+      `<div class="jn">${j.name}</div>` +
+      `<div class="jd">${j.desc}</div>` +
+      `<div class="jm"><span class="jw">${yen(wage)}<span class="jt"> / 個</span></span>` +
+      `<span class="jt">体力 ${j.stamina}　ミス <b>${j.lives}回</b>まで</span></div>` +
+      (LIFE.sick ? `<div class="lock">今日は体が動かない</div>` :
+       locked  ? `<div class="lock">アルバイターLv${j.minLv} で解禁</div>` :
+       noShift ? `<div class="lock">今日はもう出勤できない</div>` :
+       late    ? `<div class="lock">もう入れる時間じゃない</div>` :
+       tired   ? `<div class="lock">体力が足りない</div>` : '');
+    if(!dis) b.addEventListener('click', () => startShift(j));
+    el.appendChild(b);
+  }
+
+  const parts = [];
+  if(LIFE.event) parts.push(`<b>できごと</b>　${LIFE.event}`);
+  if(LIFE.day === RULES.rentDay) parts.push(`<b>今日は家賃の支払日</b>　${yen(RULES.rent)}`);
+  else if(LIFE.day === RULES.utilDay) parts.push(`<b>今日は光熱費の引き落とし</b>　${yen(RULES.util)}`);
+  parts.push(`残り <b>${RULES.days - LIFE.day + 1}日</b>　目標 <b>${yen(RULES.goal)}</b>`);
+  $('hNotice').innerHTML = parts.join('　／　');
+  $('btnSleep').textContent = LIFE.sick ? '横 に な る'
+    : LIFE.shifts > 0 ? '今 日 を 終 え る' : '今日は働かない';
+  document.body.classList.add('atHome');
+  show('ovHome');
+  saveLife();
+}
+
+// ---- シフト --------------------------------------------------
+let JOB = null;
 let overTimer = null;
-function start(){
+
+function startShift(job){
   try{ ac().resume(); }catch(e){}
   clearTimeout(overTimer); overTimer = null;
+  JOB = job;
+  LIFE.shifts++;
+  LIFE.health = clamp(LIFE.health - 3, 0, 100);   // 働けば体はすり減る
+  S.shiftStart = LIFE.clock;
+  S.endReason = null;
+  document.body.classList.remove('atHome');
+
+  S.scene = 'line';
   S.paused = false; S.running = true;
-  S.boxes = []; S.flying = []; S.fx = []; S.texts = []; S.rings = [];
+  S.boxes = []; S.flying = []; S.fx = []; S.texts = []; S.rings = []; S.demo.length = 0;
   S.score = 0; S.dispScore = 0; S.combo = 0; S.bestCombo = 0;
   S.cleared = 0; S.clearedInLevel = 0;
   S.wrongPicks = 0; S.dropped = 0; S.reactSum = 0; S.reactN = 0; S.sinceMine = 0;
-  S.level = 1; S.lives = CFG.maxLives;
+  S.level = 1; S.maxLives = job.lives; S.lives = job.lives;
   S.spawnTimer = 700; S.banner = null;
   S.laneAlert = [0,0,0]; S.chuteAlert = 0;
   S.hero.col = Math.floor(LAY.cols/2) - 1; S.hero.lane = 1;
   S.hero.step = 0; S.hero.reach = 0;
   placeHero(true);
+  S.codes = [];
   assignCodes();
+  $('missRow').querySelector('.u').textContent = '/ ' + S.maxLives;
   updateHUD();
-  $('ovTitle').classList.add('hide');
-  $('ovOver').classList.add('hide');
+  hideAll();
+  saveLife();
 }
 
+/** シフト終了（クビ or 定時）→ 給与明細 */
 function gameOver(){
   S.running = false;
   SFX.over();
-  const b = best(), isBest = S.score > b;
-  if(isBest) saveBest(S.score);
+  // 働いた時間ぶん体力を持っていかれる
+  const mins  = Math.max(20, LIFE.clock - S.shiftStart);
+  const hours = mins/60;
+  LIFE.stamina = clamp(LIFE.stamina - Math.round(JOB.stamina*(.5 + hours/3*.5)), 0, 100);
+  if(LIFE.clock >= 22*60) LIFE.health = clamp(LIFE.health - 4, 0, 100);
+
+  const rate  = wageRate() * (1 + LIFE.todayBonus);
+  const base  = Math.round(S.cleared * JOB.pay * rate);
+  const combo = S.bestCombo * 25;
+  const minus = Math.round((S.wrongPicks + S.dropped) * JOB.pay * 1.5);
+  const total = Math.max(0, base + combo - minus);
+  LIFE.money += total;
+  LIFE.earnedToday += total;
+  LIFE.totalEarned += total;
+  LIFE.totalCleared += S.cleared;
+  const up = gainXp(S.cleared*11 + S.bestCombo*4 + S.level*12);
+
   const judged = S.cleared + S.wrongPicks + S.dropped;
-  $('rScore').textContent = S.score;
-  $('rCount').textContent = S.cleared;
-  $('rCombo').textContent = S.bestCombo;
-  $('rLevel').textContent = S.level;
-  $('rAcc').textContent   = judged ? Math.round(S.cleared/judged*100) + '%' : '-';
-  $('rWrong').textContent = S.wrongPicks;
-  $('rDrop').textContent  = S.dropped;
-  $('rReact').textContent = S.reactN ? (S.reactSum/S.reactN).toFixed(2) + 's' : '-';
-  $('overTitle').textContent = isBest ? '自己ベスト更新' : '本日は上がり';
-  $('rBest').textContent = isBest ? `新記録　${S.score}` : `自己ベスト　${Math.max(b, S.score)}`;
+  $('shiftTitle').textContent = S.endReason === 'lasttrain' ? '終電で上がり'
+    : S.lives <= 0 ? '今日はもう上がってくれ' : '本日は上がり';
+  $('pyHours').textContent = `勤務 ${hhmm(S.shiftStart)} 〜 ${hhmm(LIFE.clock)}（${hours.toFixed(1)}時間）`;
+  $('pyBase').textContent   = `処理 ${S.cleared}個 × ${yen(JOB.pay*rate)}`;
+  $('pyBaseV').textContent  = yen(base);
+  $('pyCombo').textContent  = `コンボ手当（最高 ${S.bestCombo}）`;
+  $('pyComboV').textContent = yen(combo);
+  $('pyMiss').textContent   = `ミス控除（誤 ${S.wrongPicks} / 落 ${S.dropped}）`;
+  $('pyMissV').textContent  = '-' + yen(minus);
+  $('pyTotal').textContent  = yen(total);
+  $('rCount').textContent   = S.cleared;
+  $('rCombo').textContent   = S.bestCombo;
+  $('rAcc').textContent     = judged ? Math.round(S.cleared/judged*100)+'%' : '-';
+  $('rReact').textContent   = S.reactN ? (S.reactSum/S.reactN).toFixed(2)+'s' : '-';
+  $('rXp').textContent = up > 0
+    ? `アルバイターLv ${LIFE.lv} に上がった　時給 ${Math.round(wageRate()*100)}%`
+    : `経験値 +${S.cleared*11 + S.bestCombo*4 + S.level*12}`;
+  saveLife();
   clearTimeout(overTimer);
-  overTimer = setTimeout(()=> $('ovOver').classList.remove('hide'), 750);
+  overTimer = setTimeout(()=> show('ovShift'), 800);
 }
 
-$('btnStart').addEventListener('click', start);
-$('btnRetry').addEventListener('click', start);
+// ---- 夜と精算 ------------------------------------------------
+const NIGHT = [
+  {id:'cook',  n:'自炊して早く寝る', d:'米を炊いて、味噌汁を作る。明日の食費も浮く。',
+   stamina:84, health:9,  xp:0,   cheap:true},
+  {id:'bento', n:'コンビニ弁当で寝る', d:'帰り道で買った弁当。可もなく不可もなく。',
+   stamina:76, health:1,  xp:0,   cheap:false},
+  {id:'cup',   n:'カップ麺で済ませる', d:'安上がりだが、続けると体にくる。',
+   stamina:72, health:-7, xp:0,   cheap:false, discount:500},
+  {id:'study', n:'求人を調べて夜更かし', d:'時給のいい現場を探す。寝るのは遅くなる。',
+   stamina:48, health:-6, xp:140, cheap:false},
+];
+function showNight(){
+  S.scene = 'room';
+  const late = LIFE.clock >= 21*60;              // 帰宅が遅い＝寝る時間が削れる
+  const cond = .62 + LIFE.health/260;            // 体調が悪いと回復も鈍る
+  const lateMul = LIFE.clock >= 22.5*60 ? .68 : LIFE.clock >= 21*60 ? .82 : 1;
+  const el = $('nightList'); el.innerHTML = '';
+  for(const n of NIGHT){
+    const st = Math.round(n.stamina * cond * lateMul);
+    const he = n.health + (late ? -5 : 0);
+    const b = document.createElement('button');
+    b.className = 'job';
+    b.innerHTML = `<div class="jn">${n.n}</div><div class="jd">${n.d}</div>` +
+      `<div class="jm"><span class="jt">体力 +${st}　体調 ${he>=0?'+':''}${he}` +
+      `${n.xp?`　経験値 +${n.xp}`:''}${n.cheap?'　明日の食費 半額':''}` +
+      `${n.discount?`　食費 -${yen(n.discount)}`:''}</span></div>`;
+    b.addEventListener('click', () => doNight(n, st, he));
+    el.appendChild(b);
+  }
+  $('nightTitle').textContent = `${LIFE.day}日目の夜`;
+  $('nightNote').innerHTML = `${hhmm(LIFE.clock)} 帰宅　／　`
+    + (LIFE.earnedToday > 0 ? `今日の稼ぎ <b>${yen(LIFE.earnedToday)}</b>` : '今日は働かなかった')
+    + (late ? '　／　<b>帰りが遅い</b>　睡眠不足で回復が落ちる' : '');
+  show('ovNight');
+}
+
+function doNight(n, st, he){
+  LIFE.stamina = clamp(LIFE.stamina + st, 0, 100);
+  LIFE.health  = clamp(LIFE.health + he, 0, 100);
+  if(n.xp) gainXp(n.xp);
+  const nextCheap = n.cheap;
+  const discount = n.discount || 0;
+
+  // 精算
+  const food = Math.max(300, (LIFE.cheapMeal ? RULES.cheapFood : RULES.food) - discount);
+  let rent = 0, util = 0;
+  if(LIFE.day === RULES.rentDay) rent = RULES.rent;
+  if(LIFE.day === RULES.utilDay) util = RULES.util;
+  LIFE.money -= food + rent + util;
+
+  $('dayTitle').textContent = `${LIFE.day}日目 終了`;
+  $('dEarn').textContent = yen(LIFE.earnedToday);
+  $('dFood').textContent = '-' + yen(food);
+  $('dRentRow').classList.toggle('hide', !(rent || util));
+  if(rent || util){
+    $('dRentRow').querySelector('span').textContent = rent ? '家賃' : '光熱費';
+    $('dRent').textContent = '-' + yen(rent || util);
+  }
+  $('dMoney').textContent = yen(LIFE.money);
+  $('dMoney').style.color = LIFE.money < 0 ? '#b8322a' : '';
+  $('dNote').textContent = LIFE.money < 0
+    ? '所持金がマイナス。もう後がない。'
+    : `貯金目標まで ${yen(Math.max(0, RULES.goal - LIFE.money))}`;
+
+  LIFE.cheapMeal = nextCheap;
+  saveLife();
+  show('ovDay');
+}
+
+function nextDay(){
+  if(LIFE.money < 0) return ending('bankrupt');
+  if(LIFE.day >= RULES.days) return ending(
+    LIFE.money >= RULES.goal*1.5 && LIFE.lv >= 5 ? 'hired' :
+    LIFE.money >= RULES.goal ? 'saved' : 'survive');
+  LIFE.day++;
+  LIFE.shifts = 0;
+  LIFE.earnedToday = 0;
+  LIFE.clock = DAY_START;
+  rollMorning();
+  renderHome();
+}
+
+const ENDINGS = {
+  bankrupt:{t:'夜　逃　げ', c:'#ff5a4d', x:'家賃も食費も払えなくなった。段ボールをたたんで、部屋を出た。\nじゅんの一ヶ月は、ここで途切れた。'},
+  survive: {t:'ま　だ　続　く', c:'#8ea0b2', x:'月は越えた。貯金は目標に届かなかったけれど、明日もラインは動く。\nじゅんはまた、朝の電車に乗る。'},
+  saved:   {t:'貯 金 が で き た', c:'#3fd18b', x:'家賃を払っても手元に残った。はじめて通帳の数字が増えた月だった。\nじゅんは少しだけ、先のことを考えられるようになった。'},
+  hired:   {t:'正 社 員 登 用', c:'#ffb020', x:'「うちで正社員やらないか」— 主任がそう言った。\n番号を読み違えなくなった目と、休まなかった一ヶ月が、じゅんを拾い上げた。'},
+};
+function ending(kind){
+  LIFE.ended = true;
+  const e = ENDINGS[kind];
+  $('endTitle').textContent = e.t;
+  $('endTitle').style.color = e.c;
+  $('endText').textContent = e.x;
+  $('eDays').textContent  = LIFE.day;
+  $('eMoney').textContent = yen(LIFE.money);
+  $('eLv').textContent    = LIFE.lv;
+  $('eTotal').textContent = LIFE.totalCleared;
+  const rec = record();
+  const isBest = !rec || LIFE.money > rec.money;
+  if(isBest) saveRecord({money:LIFE.money, day:LIFE.day, lv:LIFE.lv, kind});
+  $('eBest').textContent = isBest ? `自己ベスト更新　${yen(LIFE.money)}` :
+    `自己ベスト　${yen(rec.money)}（Lv${rec.lv}）`;
+  try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
+  S.scene = 'room';
+  show('ovEnd');
+}
+
+function newLife(){
+  Object.assign(LIFE, {
+    day:1, money:38000, stamina:100, health:80, shifts:0, lv:1, xp:0,
+    earnedToday:0, totalCleared:0, totalEarned:0, restDays:0,
+    cheapMeal:false, todayBonus:0, sick:false, ended:false,
+    event:'今月の家賃までに、なんとか立て直したい。',
+  });
+  S.codes = [];
+  renderHome();
+}
+
+$('btnSleep').addEventListener('click', showNight);
+$('btnBackHome').addEventListener('click', renderHome);
+$('btnNextDay').addEventListener('click', nextDay);
+$('btnRestart').addEventListener('click', newLife);
 window.addEventListener('resize', layout);
 window.addEventListener('orientationchange', () => setTimeout(layout, 120));
 
 // 自動テスト用フック（?debug=1 のときだけ内部状態を公開）
-if(location.search.indexOf('debug') >= 0) window.__S = S;
+if(location.search.indexOf('debug') >= 0){ window.__S = S; window.__LIFE = LIFE; window.__JOBS = JOBS; window.__start = startShift; }
 
 // 初期化
-document.querySelector('#missRow .u').textContent = '/ ' + CFG.maxLives;
 layout();
-assignCodes();
-S.boardPulse = 0;
+loadLife();
+if(LIFE.ended || LIFE.day > RULES.days) newLife();
+else { if(!LIFE.event) LIFE.event = '今月の家賃までに、なんとか立て直したい。'; renderHome(); }
 updateHUD();
-if(best() > 0) $('bestTitle').textContent = `自己ベスト　${best()}`;
 requestAnimationFrame(loop);
 
 })();
