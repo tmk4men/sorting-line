@@ -141,6 +141,10 @@
           <div><span class="k">処理数</span><span class="v" id="rCount">0</span></div>
           <div><span class="k">最高コンボ</span><span class="v" id="rCombo">0</span></div>
           <div><span class="k">LEVEL</span><span class="v" id="rLevel">1</span></div>
+          <div><span class="k">正確率</span><span class="v" id="rAcc">-</span></div>
+          <div><span class="k">誤仕分け</span><span class="v" id="rWrong">0</span></div>
+          <div><span class="k">取りこぼし</span><span class="v" id="rDrop">0</span></div>
+          <div><span class="k">平均反応</span><span class="v" id="rReact">-</span></div>
         </div>
         <div class="best" id="rBest"></div>
         <button class="btn" id="btnRetry">も う 一 度</button>
@@ -215,6 +219,7 @@ const CFG = {
   baseSpeed: 92,
   speedPerLevel: 15,
   speedInLevel: 0.9,
+  maxSpeed: 275,
   baseSpawn: 1280,
   spawnPerLevel: 64,
   minSpawn: 470,
@@ -272,6 +277,7 @@ const S = {
   boxes:[], flying:[], fx:[], texts:[], rings:[],
   score:0, dispScore:0, combo:0, bestCombo:0,
   cleared:0, clearedInLevel:0,
+  wrongPicks:0, dropped:0, reactSum:0, reactN:0,
   level:1, lives:CFG.maxLives,
   codes:[], zones:{},
   shake:0, flash:0, flashColor:'255,90,77',
@@ -279,8 +285,10 @@ const S = {
   laneAlert:[0,0,0],
 };
 
+// localStorage はブラウザ設定や埋め込み環境で例外を投げることがある
 const BEST_KEY = 'sortingline.best';
-const best = () => +(localStorage.getItem(BEST_KEY)||0);
+const best = () => { try{ return +(localStorage.getItem(BEST_KEY)||0); }catch(e){ return 0; } };
+const saveBest = v => { try{ localStorage.setItem(BEST_KEY, v); }catch(e){} };
 
 const rnd = n => Math.floor(Math.random()*n);
 const pick = a => a[rnd(a.length)];
@@ -371,6 +379,7 @@ function spawn(){
     tilt: (Math.random()-.5)*.10,
     tape: .36 + Math.random()*.28,
     hits:0, judged:false, hitFx:0, wrongFx:0,
+    bornT:S.t, enterT:null,   // enterT = 全身が画面に入った時刻（反応時間の起点）
   });
 }
 
@@ -404,6 +413,9 @@ function tryPick(b){
     S.score += add; S.combo++;
     S.bestCombo = Math.max(S.bestCombo, S.combo);
     S.cleared++; S.clearedInLevel++;
+    // 画面に入りきる前に抜いた場合は出現時刻を起点にする（＝最速扱い）
+    S.reactSum += Math.max(0, S.t - (b.enterT !== null ? b.enterT : b.bornT));
+    S.reactN++;
     S.flying.push(Object.assign({}, b, {t:0, dur:.42, sx:b.x, sy:b.y}));
     S.boxes = S.boxes.filter(o => o.id !== b.id);
     burst(b.x, b.y, b.express ? '63,209,139' : '255,176,32', b.express?22:13);
@@ -413,7 +425,7 @@ function tryPick(b){
     if(S.clearedInLevel >= CFG.clearPerLevel) levelUp();
     updateHUD();
   }else{
-    b.judged = true; b.wrongFx = 1;
+    b.judged = true; b.wrongFx = 1; S.wrongPicks++;
     damage('誤仕分け', b.x, b.y);
   }
 }
@@ -488,8 +500,11 @@ document.addEventListener('visibilitychange', () => {
 // ============================================================
 //  更新
 // ============================================================
-const speedNow = () =>
-  (CFG.baseSpeed + (S.level-1)*CFG.speedPerLevel + S.clearedInLevel*CFG.speedInLevel) * LAY.k;
+// 上限を設けないと「読む」ゲームではなく反射の運ゲーになるため頭打ちにする
+const speedNow = () => Math.min(
+  CFG.maxSpeed,
+  CFG.baseSpeed + (S.level-1)*CFG.speedPerLevel + S.clearedInLevel*CFG.speedInLevel
+) * LAY.k;
 const spawnInterval = () => Math.max(CFG.minSpawn, CFG.baseSpawn - (S.level-1)*CFG.spawnPerLevel);
 
 function update(dt){
@@ -507,6 +522,7 @@ function update(dt){
     const v = speedNow(), gone = [];
     for(const b of S.boxes){
       b.x -= v*dt;
+      if(b.enterT === null && b.x + b.w/2 <= LAY.W) b.enterT = S.t;
       if(b.hitFx>0)   b.hitFx   = Math.max(0, b.hitFx - dt*4);
       if(b.wrongFx>0) b.wrongFx = Math.max(0, b.wrongFx - dt*1.8);
       if(b.x + b.w/2 < LAY.chuteW - 6) gone.push(b);
@@ -516,7 +532,7 @@ function update(dt){
       S.boxes = S.boxes.filter(b => !ids.has(b.id));
       for(const g of gone){
         if(g.mine && !g.judged){
-          S.chuteAlert = 1; S.laneAlert[g.lane] = 1;
+          S.chuteAlert = 1; S.laneAlert[g.lane] = 1; S.dropped++;
           SFX.drop();
           damage('取りこぼし', LAY.chuteW+56, g.y);
         }
@@ -742,7 +758,7 @@ function drawFloor(){
   ctx.fillStyle = '#4f6072'; ctx.font = '700 10px "Yu Gothic UI", sans-serif';
   ctx.fillText('ライン速度', mx, floorY+38);
   ctx.fillStyle = 'rgba(255,255,255,.07)'; rr(mx,my,mw,7,3.5); ctx.fill();
-  const sp = clamp((speedNow()/LAY.k - CFG.baseSpeed) / 200, 0, 1);
+  const sp = clamp((speedNow()/LAY.k - CFG.baseSpeed) / (CFG.maxSpeed - CFG.baseSpeed), 0, 1);
   const sg = ctx.createLinearGradient(mx,0,mx+mw,0);
   sg.addColorStop(0,'#3fd18b'); sg.addColorStop(.55,'#ffb020'); sg.addColorStop(1,'#ff5a4d');
   ctx.fillStyle = sg; rr(mx,my,Math.max(7,mw*(.1+sp*.9)),7,3.5); ctx.fill();
@@ -955,6 +971,7 @@ function start(){
   S.boxes = []; S.flying = []; S.fx = []; S.texts = []; S.rings = [];
   S.score = 0; S.dispScore = 0; S.combo = 0; S.bestCombo = 0;
   S.cleared = 0; S.clearedInLevel = 0;
+  S.wrongPicks = 0; S.dropped = 0; S.reactSum = 0; S.reactN = 0;
   S.level = 1; S.lives = CFG.maxLives;
   S.spawnTimer = 700; S.banner = null;
   S.laneAlert = [0,0,0]; S.chuteAlert = 0;
@@ -968,11 +985,16 @@ function gameOver(){
   S.running = false;
   SFX.over();
   const b = best(), isBest = S.score > b;
-  if(isBest) localStorage.setItem(BEST_KEY, S.score);
+  if(isBest) saveBest(S.score);
+  const judged = S.cleared + S.wrongPicks + S.dropped;
   $('rScore').textContent = S.score;
   $('rCount').textContent = S.cleared;
   $('rCombo').textContent = S.bestCombo;
   $('rLevel').textContent = S.level;
+  $('rAcc').textContent   = judged ? Math.round(S.cleared/judged*100) + '%' : '-';
+  $('rWrong').textContent = S.wrongPicks;
+  $('rDrop').textContent  = S.dropped;
+  $('rReact').textContent = S.reactN ? (S.reactSum/S.reactN).toFixed(2) + 's' : '-';
   $('overTitle').textContent = isBest ? '自己ベスト更新' : '本日は上がり';
   $('rBest').textContent = isBest ? `新記録　${S.score}` : `自己ベスト　${Math.max(b, S.score)}`;
   setTimeout(()=> $('ovOver').classList.remove('hide'), 750);
