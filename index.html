@@ -2,354 +2,416 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>仕分けレーン</title>
-<meta name="description" content="レーンを流れる荷物から自分の担当番号だけを抜き取る、倉庫仕分けゲーム。">
-<meta name="theme-color" content="#11161c">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2311161c'/%3E%3Cpath d='M6 10.5 16 6l10 4.5v11L16 26 6 21.5z' fill='%23c48d52' stroke='%23f0c489' stroke-width='1.4' stroke-linejoin='round'/%3E%3Cpath d='M6 10.5 16 15l10-4.5M16 15v11' stroke='%23f0c489' stroke-width='1.4' fill='none' stroke-linejoin='round'/%3E%3Crect x='11' y='12.4' width='10' height='6' rx='1' fill='%23f7f4ea' transform='rotate(-3 16 15.4)'/%3E%3C/svg%3E">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>アルバイターじゅん</title>
+<meta name="description" content="フリーターじゅんの一ヶ月。仕分け・レジ打ち・分別で日銭を稼ぎ、食べて、寝て、また働く。">
+<meta name="theme-color" content="#0e1218">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230e1218'/%3E%3Cpath d='M6 11 16 6.5 26 11v10L16 25.5 6 21z' fill='%23c48d52' stroke='%23f0c489' stroke-width='1.4' stroke-linejoin='round'/%3E%3Cpath d='M6 11 16 15.5 26 11M16 15.5v10' stroke='%23f0c489' stroke-width='1.4' fill='none' stroke-linejoin='round'/%3E%3C/svg%3E">
 <style>
   :root{
-    --bg:#11161c;
-    --panel:#1a222b;
-    --panel2:#131a21;
-    --line:#2b3844;
-    --text:#e8eef4;
-    --sub:#7f92a5;
-    --accent:#ffb020;
-    --ok:#3fd18b;
-    --ng:#ff5a4d;
+    --bg:#0e1218; --panel:#182029; --panel2:#111820; --line:#2a3744;
+    --text:#eef3f8; --sub:#8698ab; --accent:#ffb020; --accent2:#ffd479;
+    --ok:#3fd18b; --ng:#ff5a4d; --purple:#c78bff;
+    --r:16px;
+    --safe-b:env(safe-area-inset-bottom,0px);
   }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden}
   body{
-    background:radial-gradient(1200px 760px at 50% -12%, #1e2a35 0%, var(--bg) 62%);
-    color:var(--text);
+    background:#05070a;color:var(--text);
     font-family:"Yu Gothic UI","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;
-    display:flex;align-items:center;justify-content:center;
-    padding:8px;
     -webkit-user-select:none;user-select:none;
-    -webkit-tap-highlight-color:transparent;
-    overflow:hidden;
   }
-  .wrap{width:100%;max-width:1020px;display:flex;flex-direction:column;gap:8px}
+  .app{position:fixed;inset:0;display:flex;flex-direction:column;background:#05070a}
+  .stage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;background:#0a0f14}
+  canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 
   /* ---------- HUD ---------- */
-  body.atHome .hud, body.atHome .controls, body.swipeJob .controls{display:none}
-  body.swipeJob canvas{cursor:grab}
-  body.swipeJob canvas:active{cursor:grabbing}
-  .prow.hours{color:#6d675e;font-size:11px;border-bottom:1px solid rgba(0,0,0,.25)}
   .hud{
-    display:grid;grid-template-columns:1.2fr 1fr .8fr 1fr;gap:1px;
-    background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;
-    flex:0 0 auto;
+    position:absolute;top:0;left:0;right:0;z-index:6;
+    display:none;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top,0px)) 56px 8px 10px;
+    background:linear-gradient(180deg,rgba(6,9,13,.82),rgba(6,9,13,0));
+    pointer-events:none;
   }
-  .stat{background:var(--panel);padding:8px 14px;display:flex;flex-direction:column;gap:3px;min-width:0}
-  .stat .k{font-size:9.5px;letter-spacing:.2em;color:var(--sub);font-weight:700}
-  .stat .v{font:800 25px/1 "Consolas","SF Mono",monospace;letter-spacing:.02em;white-space:nowrap}
-  .stat .v .u{font-size:13px;color:var(--sub);margin-left:5px;letter-spacing:0}
-  .stat .v.hot .u{color:var(--accent)}
-  .missrow{display:flex;align-items:center;gap:7px}
-  .lives{display:flex;gap:5px;align-items:center;height:25px;margin-left:2px}
-  .lives svg{width:20px;height:20px;transition:opacity .25s, transform .25s}
+  body.playing .hud{display:flex}
+  .pill{
+    display:flex;flex-direction:column;gap:1px;padding:6px 12px;border-radius:11px;
+    background:rgba(17,23,30,.72);border:1px solid rgba(255,255,255,.06);
+    backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);min-width:0;
+  }
+  .pill .k{font-size:8.5px;letter-spacing:.22em;color:var(--sub);font-weight:800}
+  .pill .v{font:800 20px/1 "Consolas","SF Mono",monospace;letter-spacing:.02em;white-space:nowrap}
+  .pill .v .u{font-size:12px;color:var(--sub);margin-left:4px;letter-spacing:0}
+  .pill .v.hot .u{color:var(--accent)}
+  .pill.grow{flex:1}
+  .hud .clock{margin-left:auto}
+  .missrow{display:flex;align-items:center;gap:6px}
+  .lives{display:flex;gap:4px;align-items:center}
+  .lives svg{width:17px;height:17px;transition:opacity .25s,transform .25s}
   .lives svg.lost{opacity:.16;transform:scale(.78) rotate(-14deg)}
-  .missrow.danger{color:var(--ng)}
-  .missrow.danger .u{color:var(--ng)}
-  .missrow.danger #missNum{animation:missPulse .9s ease-in-out infinite}
-  @keyframes missPulse{0%,100%{opacity:1}50%{opacity:.45}}
+  .missrow.danger .v,.missrow.danger .u{color:var(--ng)}
+  .missrow.danger .v{animation:pulse .9s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
 
-  /* ---------- stage ---------- */
-  .stage{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line);
-         background:#0d1218;box-shadow:0 18px 50px rgba(0,0,0,.5)}
-  canvas{display:block;width:100%;height:auto;touch-action:manipulation;cursor:crosshair}
+  .mutebtn{
+    position:absolute;top:9px;right:10px;z-index:20;width:38px;height:38px;border-radius:11px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    background:rgba(17,23,30,.72);border:1px solid rgba(255,255,255,.08);
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  }
+  .mutebtn svg{width:20px;height:20px;fill:var(--sub)}
+  .mutebtn.on svg{fill:var(--accent)}
+  .mutebtn:active{transform:scale(.92)}
 
-  .overlay{
-    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-    background:rgba(8,12,16,.9);backdrop-filter:blur(4px);
-    text-align:center;padding:16px;overflow:auto;
-    animation:fadeIn .3s ease;
-  }
-  /* ---------- ホーム（部屋） ---------- */
-  .overlay.home{
-    background:linear-gradient(180deg, rgba(6,8,12,.30) 0%, rgba(6,8,12,.14) 34%, rgba(4,6,9,.62) 100%);
-    backdrop-filter:none;align-items:stretch;padding:0;
-  }
-  .homewrap{display:flex;flex-direction:column;justify-content:space-between;width:100%;height:100%;padding:14px 16px}
-  .hometop{display:flex;flex-direction:column;gap:9px}
-  .brand{
-    font-size:clamp(21px,3.4vw,32px);font-weight:800;letter-spacing:.1em;line-height:1.1;
-    text-shadow:0 3px 10px rgba(0,0,0,.85), 0 0 26px rgba(0,0,0,.7);
-  }
-  .brand small{display:block;font-size:9.5px;letter-spacing:.44em;color:var(--accent);font-weight:700;margin-bottom:5px}
-  .lifebar{
-    display:flex;gap:1px;background:rgba(43,56,68,.9);border:1px solid rgba(43,56,68,.9);border-radius:10px;
-    overflow:hidden;backdrop-filter:blur(3px);max-width:640px;
-  }
-  .li{background:rgba(19,26,33,.92);padding:6px 12px;display:flex;flex-direction:column;gap:2px;justify-content:center}
-  .li.grow{flex:1;min-width:150px}
-  .li .k{font-size:9px;letter-spacing:.14em;color:var(--sub);font-weight:700;white-space:nowrap}
-  .li .k b{color:var(--text);font-size:11px}
-  .li .v{font:800 19px/1 "Consolas",monospace}
-  .li .v.money{color:var(--accent)}
-  .xpbar{height:5px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:3px}
-  .xpbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#3fd18b,#9ae6bd);transition:width .4s}
+  /* ---------- overlays ---------- */
+  .overlay{position:absolute;inset:0;z-index:10;display:flex;animation:fade .3s ease}
+  .hide{display:none!important}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,8,12,.34) 0%,rgba(5,8,12,.2) 30%,rgba(3,5,8,.72) 100%)}
+  .sheet{position:relative;z-index:1;width:100%;height:100%;display:flex;flex-direction:column;
+         padding:calc(14px + env(safe-area-inset-top,0px)) 16px calc(16px + var(--safe-b));overflow:auto}
+  .center{align-items:center;justify-content:center}
 
-  .jobs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-content:end;margin:10px 0}
-  .job{
-    text-align:left;cursor:pointer;color:var(--text);
-    background:linear-gradient(180deg, rgba(24,32,41,.95), rgba(15,21,27,.97));
-    border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;
-    padding:11px 13px;display:flex;flex-direction:column;gap:6px;
-    box-shadow:0 10px 26px rgba(0,0,0,.5);transition:transform .1s, border-color .1s;
-    font-family:inherit;
-  }
-  .job:hover{transform:translateY(-3px);border-color:#4a5b6d}
-  .job:active{transform:translateY(0)}
-  .job[disabled]{opacity:.42;cursor:not-allowed;border-left-color:#54606c;transform:none}
-  .job .jn{font-size:14px;font-weight:800;letter-spacing:.02em}
-  .job .jd{font-size:11px;color:var(--sub);line-height:1.55;min-height:34px}
-  .job .jm{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
-  .job .jw{font:800 17px/1 "Consolas",monospace;color:var(--accent)}
-  .job .jt{font-size:10px;color:var(--sub);letter-spacing:.06em}
-  .job .jt b{color:#ff8f84}
-  .job .lock{font-size:10px;color:#ff9a90;letter-spacing:.08em}
+  /* header block */
+  .head{display:flex;flex-direction:column;gap:12px;flex:0 0 auto}
+  .brand{font-size:clamp(20px,4.4vw,30px);font-weight:900;letter-spacing:.09em;line-height:1.1;
+         text-shadow:0 3px 12px rgba(0,0,0,.85)}
+  .brand small{display:block;font-size:9px;letter-spacing:.5em;color:var(--accent);font-weight:800;margin-bottom:4px}
 
-  .homefoot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-  .homebtns{display:flex;gap:10px}
-  .notice{font-size:11.5px;color:#9fb1c3;letter-spacing:.04em;background:rgba(10,14,19,.7);
-          border-radius:8px;padding:7px 11px;backdrop-filter:blur(3px)}
-  .notice b{color:var(--accent)}
-  .btn.ghost{background:transparent;color:var(--sub);border:1px solid var(--line);box-shadow:none;
-             padding:11px 22px;font-size:12px;letter-spacing:.1em}
-  .btn.ghost:active{transform:translateY(2px)}
+  /* status strip */
+  .status{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{display:flex;flex-direction:column;gap:3px;padding:8px 13px;border-radius:12px;
+        background:rgba(15,21,28,.78);border:1px solid rgba(255,255,255,.05);backdrop-filter:blur(5px)}
+  .chip .k{font-size:8.5px;letter-spacing:.16em;color:var(--sub);font-weight:800}
+  .chip .v{font:800 17px/1 "Consolas",monospace}
+  .chip .v.money{color:var(--accent)}
+  .chip.grow{flex:1;min-width:150px}
+  .gauges{display:flex;flex-direction:column;gap:5px;justify-content:center}
+  .gauge{display:flex;align-items:center;gap:7px}
+  .gauge .gk{font-size:9.5px;color:var(--sub);font-weight:800;width:30px}
+  .gauge .gb{flex:1;height:7px;border-radius:4px;background:rgba(255,255,255,.09);overflow:hidden}
+  .gauge .gb i{display:block;height:100%;width:0;transition:width .4s,background .3s;border-radius:4px}
+  .gauge .gv{font:800 12px/1 "Consolas",monospace;width:26px;text-align:right;color:var(--text)}
 
-  /* ---------- 給与明細 ---------- */
-  .payslip{
-    width:100%;background:#f6f3e8;color:#20242b;border-radius:6px;padding:12px 15px;
-    box-shadow:0 10px 26px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:2px;
-    font-family:"Consolas",monospace;
+  .spacer{flex:1 1 auto;min-height:10px}
+
+  /* action tiles (home) */
+  .acts{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;flex:0 0 auto}
+  .act{
+    position:relative;display:flex;align-items:center;gap:13px;cursor:pointer;color:var(--text);
+    font-family:inherit;text-align:left;padding:16px 16px;border-radius:var(--r);overflow:hidden;
+    background:linear-gradient(160deg,rgba(31,41,52,.96),rgba(15,21,28,.98));
+    border:1px solid var(--line);box-shadow:0 12px 30px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.05);
+    transition:transform .1s,border-color .12s,box-shadow .12s;
   }
-  .prow{display:flex;justify-content:space-between;gap:14px;font-size:12.5px;padding:5px 0;
-        border-bottom:1px dashed rgba(0,0,0,.16)}
+  .act::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent);opacity:.9}
+  .act:hover{transform:translateY(-3px);border-color:#455a6d;box-shadow:0 16px 36px rgba(0,0,0,.55)}
+  .act:active{transform:translateY(0)}
+  .act[disabled]{opacity:.4;cursor:not-allowed;filter:grayscale(.4)}
+  .act .ico{flex:0 0 auto;width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;
+            background:radial-gradient(circle at 38% 30%,rgba(255,208,120,.22),rgba(255,176,32,.06));border:1px solid rgba(255,176,32,.25)}
+  .act .ico svg{width:26px;height:26px;stroke:var(--accent2);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .act .tx{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .act .tn{font-size:17px;font-weight:900;letter-spacing:.04em}
+  .act .td{font-size:11px;color:var(--sub);line-height:1.4}
+  .act.wide{grid-column:1 / -1}
+  .act .badge{position:absolute;right:12px;top:11px;font-size:10px;font-weight:800;color:#ff9a90;letter-spacing:.05em}
+
+  /* job / choice cards */
+  .list{display:flex;flex-direction:column;gap:10px;flex:0 0 auto;padding-bottom:4px}
+  .card2{
+    position:relative;text-align:left;cursor:pointer;color:var(--text);font-family:inherit;
+    background:linear-gradient(165deg,rgba(28,37,47,.97),rgba(14,20,26,.98));
+    border:1px solid var(--line);border-radius:14px;padding:13px 15px;overflow:hidden;
+    box-shadow:0 10px 26px rgba(0,0,0,.45);transition:transform .1s,border-color .12s;
+    display:flex;flex-direction:column;gap:7px;
+  }
+  .card2::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
+  .card2.c-reg::before{background:#5bd6c4}.card2.c-waste::before{background:#8fd15b}
+  .card2:hover{transform:translateY(-2px);border-color:#455a6d}
+  .card2:active{transform:translateY(0)}
+  .card2[disabled]{opacity:.42;cursor:not-allowed;filter:grayscale(.35)}
+  .card2 .cn{font-size:15.5px;font-weight:900;letter-spacing:.02em;display:flex;align-items:center;gap:9px}
+  .card2 .cn .ci{width:30px;height:30px;flex:0 0 auto;border-radius:9px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center}
+  .card2 .cn .ci svg{width:20px;height:20px}
+  .card2 .cd{font-size:11.5px;color:var(--sub);line-height:1.55}
+  .card2 .cm{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+  .card2 .cw{font:800 18px/1 "Consolas",monospace;color:var(--accent)}
+  .card2 .cw .u{font-size:11px;color:var(--sub);margin-left:2px}
+  .card2 .ct{font-size:10.5px;color:var(--sub)}
+  .card2 .ct b{color:#ff8f84}
+  .card2 .lock{font-size:10.5px;color:#ff9a90;letter-spacing:.05em;font-weight:700}
+
+  .foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;flex:0 0 auto;margin-top:12px}
+  .note{font-size:11.5px;color:#9fb1c3;line-height:1.5;background:rgba(9,13,18,.72);border-radius:10px;padding:8px 12px;backdrop-filter:blur(4px)}
+  .note b{color:var(--accent);font-weight:800}
+
+  .btn{
+    background:linear-gradient(180deg,var(--accent2),var(--accent));color:#241804;border:none;border-radius:999px;
+    font:900 15px/1 inherit;letter-spacing:.14em;padding:15px 40px;cursor:pointer;
+    box-shadow:0 4px 0 #b3760c,0 10px 22px rgba(0,0,0,.4);transition:transform .08s,box-shadow .08s;
+  }
+  .btn:active{transform:translateY(3px);box-shadow:0 1px 0 #b3760c,0 5px 14px rgba(0,0,0,.4)}
+  .btn.ghost{background:rgba(20,27,35,.7);color:var(--text);border:1px solid var(--line);box-shadow:none;font-weight:800;letter-spacing:.1em;padding:14px 26px}
+  .btn.ghost:active{transform:translateY(2px);box-shadow:none}
+  .btn.block{width:100%}
+
+  /* result card */
+  .modal{max-width:560px;width:100%;margin:auto;display:flex;flex-direction:column;gap:16px;align-items:center}
+  .title{font-size:clamp(24px,5.4vw,40px);font-weight:900;letter-spacing:.1em;line-height:1.15;text-align:center}
+  .title small{display:block;font-size:10px;letter-spacing:.44em;color:var(--accent);font-weight:800;margin-bottom:7px}
+  .payslip{width:100%;background:#f6f3e8;color:#20242b;border-radius:8px;padding:14px 16px;
+           box-shadow:0 12px 30px rgba(0,0,0,.5);display:flex;flex-direction:column;font-family:"Consolas",monospace}
+  .prow{display:flex;justify-content:space-between;gap:14px;font-size:12.5px;padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.16)}
+  .prow.mini{color:#6d675e;font-size:11px;border-bottom:1px solid rgba(0,0,0,.22)}
   .prow b{font-weight:800}
   .prow.minus b{color:#b8322a}
-  .prow.total{border-bottom:none;border-top:2px solid rgba(0,0,0,.6);margin-top:4px;padding-top:8px;font-size:15px}
-  .prow.total b{font-size:20px}
-  .endtext{font-size:13px;color:var(--sub);line-height:1.8;max-width:460px}
-  .toast{
-    position:absolute;left:50%;bottom:20px;transform:translate(-50%,14px);
-    background:rgba(10,14,19,.92);border:1px solid var(--line);border-radius:999px;
-    color:var(--text);font-size:13px;font-weight:700;letter-spacing:.03em;padding:11px 22px;
-    box-shadow:0 10px 26px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;z-index:5;
-  }
-  .toast.on{opacity:1;transform:translate(-50%,0)}
-  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-  .overlay.hide{display:none}
-  .card{max-width:600px;width:100%;display:flex;flex-direction:column;align-items:center;gap:15px;margin:auto}
-  .title{font-size:clamp(26px,5.2vw,44px);font-weight:800;letter-spacing:.12em;line-height:1.15}
-  .title small{display:block;font-size:10.5px;letter-spacing:.46em;color:var(--accent);font-weight:700;margin-bottom:8px}
-  .rules{display:flex;flex-direction:column;gap:10px;color:var(--sub);font-size:13px;line-height:1.6;text-align:left;
-         background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
-  .rule{display:flex;gap:11px;align-items:flex-start}
-  .rule svg{flex:0 0 auto;margin-top:2px}
-  .rule b{color:var(--text);font-weight:700}
-  .btn{
-    background:var(--accent);color:#241804;border:none;border-radius:999px;
-    font:800 16px/1 inherit;letter-spacing:.16em;padding:16px 46px;cursor:pointer;
-    box-shadow:0 4px 0 #b3760c;transition:transform .08s, box-shadow .08s;
-  }
-  .btn:active{transform:translateY(3px);box-shadow:0 1px 0 #b3760c}
-  .result{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;width:100%;
-          background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .prow.total{border-bottom:none;border-top:2px solid rgba(0,0,0,.6);margin-top:4px;padding-top:9px;font-size:15px}
+  .prow.total b{font-size:21px}
+  .result{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;width:100%;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
   .result div{background:var(--panel2);padding:11px 4px;display:flex;flex-direction:column;gap:6px;align-items:center}
-  .result .k{font-size:9.5px;letter-spacing:.14em;color:var(--sub);font-weight:700}
-  .result .v{font:800 25px/1 "Consolas",monospace}
-  .best{font-size:12px;color:var(--accent);letter-spacing:.14em;font-weight:700}
-  .hint{font-size:11px;color:#57677a;letter-spacing:.08em}
+  .result .k{font-size:9px;letter-spacing:.1em;color:var(--sub);font-weight:800}
+  .result .v{font:800 23px/1 "Consolas",monospace}
+  .best{font-size:12.5px;color:var(--accent);letter-spacing:.08em;font-weight:800;text-align:center}
+  .endtext{font-size:13.5px;color:var(--sub);line-height:1.85;max-width:460px;text-align:center;white-space:pre-line}
 
-  /* ---------- 操作パネル（タッチ端末） ---------- */
-  .controls{display:none;align-items:center;justify-content:space-between;gap:14px;padding:2px 4px}
-  .dpad{
-    display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px);
-    grid-template-areas:". u ." "l c r" ". d .";
+  .toast{position:absolute;left:50%;bottom:calc(20px + var(--safe-b));transform:translate(-50%,14px);z-index:30;
+         background:rgba(10,14,19,.94);border:1px solid var(--line);border-radius:999px;color:var(--text);
+         font-size:13px;font-weight:800;letter-spacing:.02em;padding:11px 22px;box-shadow:0 10px 26px rgba(0,0,0,.5);
+         opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;max-width:88%;text-align:center}
+  .toast.on{opacity:1;transform:translate(-50%,0)}
+
+  /* ---------- controls (touch) ---------- */
+  .controls{
+    display:none;flex:0 0 auto;align-items:center;justify-content:space-between;gap:16px;
+    padding:10px 18px calc(10px + var(--safe-b));background:linear-gradient(180deg,#0c1117,#080b0f);
+    border-top:1px solid rgba(255,255,255,.05);
   }
-  .dbtn{
-    background:var(--panel);border:1px solid var(--line);border-radius:10px;
-    display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;
-    -webkit-tap-highlight-color:transparent;
-  }
-  .dbtn svg{width:22px;height:22px;fill:var(--accent)}
-  .dbtn:active{background:#243040;transform:scale(.94)}
+  body.playing.jobSort .controls{display:flex}
+  .dpad{display:grid;grid-template-columns:repeat(3,60px);grid-template-rows:repeat(3,60px);gap:5px;
+        grid-template-areas:". u ." "l c r" ". d .";}
+  .dbtn{background:linear-gradient(180deg,#212c38,#161e27);border:1px solid #33424f;border-radius:14px;
+        display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 3px 0 #0c1218}
+  .dbtn svg{width:28px;height:28px;fill:var(--accent2)}
+  .dbtn:active{transform:translateY(3px);box-shadow:none;background:#2b3949}
   .dbtn.up{grid-area:u}.dbtn.left{grid-area:l}.dbtn.right{grid-area:r}.dbtn.down{grid-area:d}
-  .dcore{grid-area:c;background:var(--panel2);border-radius:6px;margin:9px}
-  .grab{
-    flex:0 0 auto;width:104px;height:104px;border-radius:50%;border:none;cursor:pointer;
-    background:radial-gradient(circle at 38% 32%, #ffd479, var(--accent) 62%, #d8880c);
-    color:#241804;font:800 19px/1 inherit;letter-spacing:.12em;
-    box-shadow:0 5px 0 #a86c08, 0 12px 22px rgba(0,0,0,.45);
-  }
-  .grab:active{transform:translateY(4px);box-shadow:0 1px 0 #a86c08, 0 6px 14px rgba(0,0,0,.45)}
-  @media (max-width:900px), (hover:none){ .controls{display:flex} }
-  @media (max-width:720px){
-    .hud{grid-template-columns:1.1fr 1fr .7fr 1fr}
-    .stat{padding:6px 9px}
-    .stat .v{font-size:18px}
-    .stat .v .u{font-size:11px;margin-left:3px}
-    .lives{height:19px}
-    .lives svg{width:16px;height:16px}
-    .rules{font-size:11.5px;padding:11px 12px;gap:8px}
-    .btn{padding:14px 36px;font-size:15px}
+  .dcore{grid-area:c;background:#0f151b;border-radius:9px;margin:12px;border:1px solid #222d38}
+  .grab{flex:0 0 auto;width:118px;height:118px;border-radius:50%;border:none;cursor:pointer;
+        background:radial-gradient(circle at 38% 32%,#ffd985,var(--accent) 60%,#d8880c);
+        color:#241804;font:900 22px/1 inherit;letter-spacing:.08em;
+        box-shadow:0 6px 0 #a86c08,0 14px 26px rgba(0,0,0,.45)}
+  .grab:active{transform:translateY(5px);box-shadow:0 1px 0 #a86c08,0 7px 16px rgba(0,0,0,.45)}
+
+  @media (max-width:520px){
+    .acts{gap:9px}
+    .act{padding:13px 13px;gap:11px}
+    .act .ico{width:42px;height:42px}
     .result{grid-template-columns:repeat(2,1fr)}
-    .result div{padding:9px 4px}
-    .result .v{font-size:21px}
-    .jobs{grid-template-columns:1fr;gap:7px}
-    .job{padding:9px 11px;gap:4px}
-    .job .jd{min-height:0;font-size:10.5px}
-    .homewrap{padding:10px 11px}
-    .li{padding:5px 9px}
-    .li .v{font-size:16px}
+    .dpad{grid-template-columns:repeat(3,54px);grid-template-rows:repeat(3,54px)}
+    .grab{width:104px;height:104px;font-size:20px}
+    .chip.grow{min-width:130px}
+  }
+  @media (min-width:900px){
+    .sheet{padding-left:max(16px,calc((100% - 1000px)/2 + 16px));padding-right:max(16px,calc((100% - 1000px)/2 + 16px))}
+    .acts{grid-template-columns:repeat(4,1fr)}
+    .act.wide{grid-column:auto}
+    .list{max-width:1000px;width:100%;align-self:center}
   }
 </style>
 </head>
 <body>
-<div class="wrap" id="wrap">
-
-  <div class="hud">
-    <div class="stat"><div class="k">SCORE</div><div class="v" id="score">0</div></div>
-    <div class="stat"><div class="k">COMBO</div><div class="v" id="combo">0<span class="u">x1</span></div></div>
-    <div class="stat"><div class="k">LEVEL</div><div class="v" id="level">1</div></div>
-    <div class="stat"><div class="k">MISS</div>
-      <div class="v missrow" id="missRow"><span id="missNum">0</span><span class="u">/ 3</span><span class="lives" id="lives"></span></div>
-    </div>
-  </div>
-
+<div class="app">
   <div class="stage">
     <canvas id="cv"></canvas>
 
-    <!-- ホーム（じゅんの部屋） -->
-    <div class="overlay home" id="ovHome">
-      <div class="homewrap">
-        <div class="hometop">
+    <!-- HUD (勤務中のみ) -->
+    <div class="hud" id="hud">
+      <div class="pill"><span class="k">SCORE</span><span class="v" id="score">0</span></div>
+      <div class="pill"><span class="k">COMBO</span><span class="v" id="combo">0<span class="u">x1</span></span></div>
+      <div class="pill"><span class="k">MISS</span>
+        <span class="v missrow" id="missRow"><span id="missNum">0</span><span class="u">/3</span><span class="lives" id="lives"></span></span>
+      </div>
+      <div class="pill clock"><span class="k">TIME</span><span class="v" id="hudClock">8:00</span></div>
+    </div>
+
+    <button class="mutebtn" id="btnMute" aria-label="音"></button>
+
+    <!-- ホーム -->
+    <div class="overlay" id="ovHome">
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="head">
           <div class="brand"><small>A R U B A I T E R</small>アルバイターじゅん</div>
-          <div class="lifebar">
-            <div class="li"><span class="k">日目</span><span class="v" id="hDay">1</span></div>
-            <div class="li"><span class="k">時刻</span><span class="v" id="hClock">8:00</span></div>
-            <div class="li"><span class="k">所持金</span><span class="v money" id="hMoney">¥0</span></div>
-            <div class="li"><span class="k">残りシフト</span><span class="v" id="hShift">2</span></div>
-            <div class="li grow">
-              <span class="k">体力 <b id="hStam">100</b>　体調 <b id="hHealth">80</b>　気分 <b id="hMood">70</b></span>
-              <div class="xpbar"><i id="hStamBar"></i></div>
-              <div class="xpbar"><i id="hHealthBar"></i></div>
-              <div class="xpbar"><i id="hMoodBar"></i></div>
+          <div class="status">
+            <div class="chip"><span class="k">DAY</span><span class="v" id="hDay">1</span></div>
+            <div class="chip"><span class="k">時刻</span><span class="v" id="hClock">8:00</span></div>
+            <div class="chip"><span class="k">所持金</span><span class="v money" id="hMoney">¥0</span></div>
+            <div class="chip"><span class="k">残シフト</span><span class="v" id="hShift">2</span></div>
+            <div class="chip grow gauges">
+              <div class="gauge"><span class="gk">体力</span><span class="gb"><i id="gStam"></i></span><span class="gv" id="vStam">100</span></div>
+              <div class="gauge"><span class="gk">体調</span><span class="gb"><i id="gHealth"></i></span><span class="gv" id="vHealth">80</span></div>
+              <div class="gauge"><span class="gk">気分</span><span class="gb"><i id="gMood"></i></span><span class="gv" id="vMood">70</span></div>
             </div>
-            <div class="li grow">
-              <span class="k">アルバイターLv <b id="hLv">1</b>　時給 <b id="hRate">100</b>%</span>
-              <div class="xpbar"><i id="hXp"></i></div>
+            <div class="chip grow gauges">
+              <div class="gauge"><span class="gk">Lv<b id="hLv">1</b></span><span class="gb"><i id="gXp" style="background:linear-gradient(90deg,#5bd6c4,#9ae6bd)"></i></span><span class="gv" id="hRate">100%</span></div>
+              <div class="gauge" style="font-size:10px;color:var(--sub)"><span id="hRentInfo"></span></div>
             </div>
           </div>
         </div>
 
-        <div class="jobs" id="jobs"></div>
+        <div class="spacer"></div>
 
-        <div class="homefoot">
-          <div class="notice" id="hNotice"></div>
-          <div class="homebtns">
-            <button class="btn ghost" id="btnPlay">遊 ぶ</button>
-            <button class="btn ghost" id="btnSleep">今日を終える</button>
-          </div>
+        <div class="acts" id="homeActs">
+          <button class="act" id="aWork">
+            <span class="ico"><svg viewBox="0 0 24 24"><path d="M4 8h16v11H4z"/><path d="M9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M4 13h16"/></svg></span>
+            <span class="tx"><span class="tn">出勤する</span><span class="td">バイトを選んで働く</span></span>
+            <span class="badge" id="workBadge"></span>
+          </button>
+          <button class="act" id="aPlay">
+            <span class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="9" rx="4"/><path d="M8 12.5h-2m1-1v2"/><circle cx="16" cy="12" r=".6" fill="var(--accent2)" stroke="none"/><circle cx="18" cy="13.5" r=".6" fill="var(--accent2)" stroke="none"/></svg></span>
+            <span class="tx"><span class="tn">遊ぶ</span><span class="td">気分をととのえる</span></span>
+          </button>
+          <button class="act" id="aShop">
+            <span class="ico"><svg viewBox="0 0 24 24"><path d="M6 8h12l-1 11H7z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg></span>
+            <span class="tx"><span class="tn">買い物</span><span class="td">部屋にモノを増やす</span></span>
+          </button>
+          <button class="act" id="aSleep">
+            <span class="ico"><svg viewBox="0 0 24 24"><path d="M20 14.5A7.5 7.5 0 0 1 9.5 4 7.5 7.5 0 1 0 20 14.5z"/></svg></span>
+            <span class="tx"><span class="tn" id="sleepLabel">寝る</span><span class="td">買い物して一日を終える</span></span>
+          </button>
+        </div>
+
+        <div class="foot">
+          <div class="note" id="hNotice"></div>
         </div>
       </div>
     </div>
 
-    <!-- 勤務結果（給与明細） -->
-    <div class="overlay hide" id="ovShift">
-      <div class="card">
-        <div class="title" id="shiftTitle">勤務終了</div>
-        <div class="payslip">
-          <div class="prow hours"><span id="pyHours">勤務 8:00 〜 8:00</span><b></b></div>
-          <div class="prow"><span id="pyBase">処理 0個 × ¥0</span><b id="pyBaseV">¥0</b></div>
-          <div class="prow"><span id="pyCombo">コンボ手当</span><b id="pyComboV">¥0</b></div>
-          <div class="prow minus"><span id="pyMiss">ミス控除</span><b id="pyMissV">¥0</b></div>
-          <div class="prow total"><span>日給</span><b id="pyTotal">¥0</b></div>
-        </div>
-        <div class="result">
-          <div><span class="k">処理数</span><span class="v" id="rCount">0</span></div>
-          <div><span class="k">最高コンボ</span><span class="v" id="rCombo">0</span></div>
-          <div><span class="k">正確率</span><span class="v" id="rAcc">-</span></div>
-          <div><span class="k">平均反応</span><span class="v" id="rReact">-</span></div>
-        </div>
-        <div class="best" id="rXp"></div>
-        <button class="btn" id="btnBackHome">部 屋 に 戻 る</button>
+    <!-- 出勤先えらび -->
+    <div class="overlay hide" id="ovWork">
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="head"><div class="brand"><small>C L O C K　I N</small>どこで働く？</div>
+          <div class="note" id="workNote"></div></div>
+        <div class="spacer" style="min-height:6px"></div>
+        <div class="list" id="jobList"></div>
+        <div class="foot"><button class="btn ghost" id="btnWorkBack">もどる</button></div>
       </div>
     </div>
 
     <!-- 遊ぶ -->
-    <div class="overlay hide home" id="ovPlay">
-      <div class="homewrap">
-        <div class="hometop">
-          <div class="brand"><small>H A V E　F U N</small>何して遊ぶ？</div>
-          <div class="notice" id="playNote"></div>
-        </div>
-        <div class="jobs" id="playList"></div>
-        <div class="homefoot">
-          <div class="notice">気分が落ちると仕事に集中できず、ミスできる回数が減る。</div>
+    <div class="overlay hide" id="ovPlay">
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="head"><div class="brand"><small>H A V E　F U N</small>何して遊ぶ？</div>
+          <div class="note" id="playNote"></div></div>
+        <div class="spacer" style="min-height:6px"></div>
+        <div class="list" id="playList"></div>
+        <div class="foot">
+          <div class="note">気分が沈むと集中できず、ミスできる回数が減る。</div>
           <button class="btn ghost" id="btnPlayBack">やめておく</button>
         </div>
       </div>
     </div>
 
-    <!-- 夜の行動 -->
-    <div class="overlay hide home" id="ovNight">
-      <div class="homewrap">
-        <div class="hometop">
-          <div class="brand"><small>N I G H T</small><span id="nightTitle">1日目の夜</span></div>
-          <div class="notice" id="nightNote"></div>
+    <!-- 買い物 -->
+    <div class="overlay hide" id="ovShop">
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="head"><div class="brand"><small>S H O P P I N G</small>買い物</div>
+          <div class="note" id="shopNote"></div></div>
+        <div class="spacer" style="min-height:6px"></div>
+        <div class="list" id="shopList"></div>
+        <div class="foot">
+          <div class="note">効果はないけれど、部屋に置くと少し暮らしがマシに見える。</div>
+          <button class="btn ghost" id="btnShopBack">やめておく</button>
         </div>
-        <div class="jobs" id="nightList"></div>
-        <div class="homefoot"><div class="notice" id="nightHint">選んだ過ごし方で、明日の体力と体調が決まる。</div></div>
       </div>
     </div>
 
-    <!-- 一日の精算 -->
-    <div class="overlay hide" id="ovDay">
-      <div class="card">
-        <div class="title" id="dayTitle">1日目 終了</div>
-        <div class="payslip">
-          <div class="prow"><span>今日の稼ぎ</span><b id="dEarn">¥0</b></div>
-          <div class="prow minus"><span>食費・雑費</span><b id="dFood">¥0</b></div>
-          <div class="prow minus hide" id="dRentRow"><span>家賃</span><b id="dRent">¥0</b></div>
-          <div class="prow total"><span>残高</span><b id="dMoney">¥0</b></div>
+    <!-- 勤務結果 -->
+    <div class="overlay hide center" id="ovShift">
+      <div class="scrim"></div>
+      <div class="sheet center">
+        <div class="modal">
+          <div class="title" id="shiftTitle">本日は上がり</div>
+          <div class="payslip">
+            <div class="prow mini"><span id="pyHours">勤務 8:00 〜 8:00</span><b></b></div>
+            <div class="prow"><span id="pyBase">時給 ¥0 × 0.0時間</span><b id="pyBaseV">¥0</b></div>
+            <div class="prow"><span id="pyCombo">コンボ手当</span><b id="pyComboV">¥0</b></div>
+            <div class="prow minus"><span id="pyMiss">ミス控除</span><b id="pyMissV">¥0</b></div>
+            <div class="prow total"><span>日給</span><b id="pyTotal">¥0</b></div>
+          </div>
+          <div class="result">
+            <div><span class="k">処理数</span><span class="v" id="rCount">0</span></div>
+            <div><span class="k">最高コンボ</span><span class="v" id="rCombo">0</span></div>
+            <div><span class="k">正確率</span><span class="v" id="rAcc">-</span></div>
+            <div><span class="k">獲得Lv</span><span class="v" id="rLv">1</span></div>
+          </div>
+          <div class="best" id="rXp"></div>
+          <button class="btn block" id="btnBackHome">部 屋 に 戻 る</button>
         </div>
-        <div class="best" id="dNote"></div>
-        <button class="btn" id="btnNextDay">次 の 日 へ</button>
+      </div>
+    </div>
+
+    <!-- スーパー -->
+    <div class="overlay hide" id="ovMarket">
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="head"><div class="brand"><small>S U P E R M A R K E T</small>何を食べる？</div>
+          <div class="note" id="marketNote"></div></div>
+        <div class="spacer" style="min-height:6px"></div>
+        <div class="list" id="marketList"></div>
+        <div class="foot"><div class="note">選んだ食事で、明日の体力と体調が変わる。買ったら寝る。</div></div>
+      </div>
+    </div>
+
+    <!-- 一日の精算（就寝背景） -->
+    <div class="overlay hide center" id="ovDay">
+      <div class="sheet center">
+        <div class="modal">
+          <div class="title" id="dayTitle">1日目 おわり</div>
+          <div class="payslip">
+            <div class="prow"><span>今日の稼ぎ</span><b id="dEarn">¥0</b></div>
+            <div class="prow minus"><span id="dFoodLabel">食費</span><b id="dFood">¥0</b></div>
+            <div class="prow minus hide" id="dRentRow"><span>家賃</span><b id="dRent">¥0</b></div>
+            <div class="prow total"><span>残高</span><b id="dMoney">¥0</b></div>
+          </div>
+          <div class="best" id="dNote"></div>
+          <button class="btn block" id="btnNextDay">次 の 日 へ</button>
+        </div>
       </div>
     </div>
 
     <!-- エンディング -->
-    <div class="overlay hide" id="ovEnd">
-      <div class="card">
-        <div class="title" id="endTitle">おわり</div>
-        <div class="endtext" id="endText"></div>
-        <div class="result">
-          <div><span class="k">生き延びた日数</span><span class="v" id="eDays">0</span></div>
-          <div><span class="k">最終所持金</span><span class="v" id="eMoney">¥0</span></div>
-          <div><span class="k">アルバイターLv</span><span class="v" id="eLv">1</span></div>
-          <div><span class="k">総処理数</span><span class="v" id="eTotal">0</span></div>
+    <div class="overlay hide center" id="ovEnd">
+      <div class="scrim"></div>
+      <div class="sheet center">
+        <div class="modal">
+          <div class="title" id="endTitle">おわり</div>
+          <div class="endtext" id="endText"></div>
+          <div class="result">
+            <div><span class="k">生き延びた日数</span><span class="v" id="eDays">0</span></div>
+            <div><span class="k">最終所持金</span><span class="v" id="eMoney">¥0</span></div>
+            <div><span class="k">アルバイターLv</span><span class="v" id="eLv">1</span></div>
+            <div><span class="k">総処理数</span><span class="v" id="eTotal">0</span></div>
+          </div>
+          <div class="best" id="eBest"></div>
+          <button class="btn block" id="btnRestart">は じ め か ら</button>
         </div>
-        <div class="best" id="eBest"></div>
-        <button class="btn" id="btnRestart">は じ め か ら</button>
       </div>
     </div>
   </div>
 
-  <div class="controls">
+  <div class="controls" id="controls">
     <div class="dpad">
-      <button class="dbtn up"    data-dir="0,-1" aria-label="上へ"><svg viewBox="0 0 24 24"><path d="M12 7l6 8H6z"/></svg></button>
-      <button class="dbtn left"  data-dir="-1,0" aria-label="左へ"><svg viewBox="0 0 24 24"><path d="M7 12l8-6v12z"/></svg></button>
+      <button class="dbtn up"    data-dir="0,-1" aria-label="上"><svg viewBox="0 0 24 24"><path d="M12 6l7 9H5z"/></svg></button>
+      <button class="dbtn left"  data-dir="-1,0" aria-label="左"><svg viewBox="0 0 24 24"><path d="M6 12l9-7v14z"/></svg></button>
       <span class="dcore"></span>
-      <button class="dbtn right" data-dir="1,0"  aria-label="右へ"><svg viewBox="0 0 24 24"><path d="M17 12l-8 6V6z"/></svg></button>
-      <button class="dbtn down"  data-dir="0,1"  aria-label="下へ"><svg viewBox="0 0 24 24"><path d="M12 17l-6-8h12z"/></svg></button>
+      <button class="dbtn right" data-dir="1,0"  aria-label="右"><svg viewBox="0 0 24 24"><path d="M18 12l-9 7V5z"/></svg></button>
+      <button class="dbtn down"  data-dir="0,1"  aria-label="下"><svg viewBox="0 0 24 24"><path d="M12 18l-7-9h14z"/></svg></button>
     </div>
-    <button class="grab" id="btnGrab">取 る</button>
+    <button class="grab" id="btnGrab">取る</button>
   </div>
 </div>
 
@@ -357,109 +419,129 @@
 (() => {
 'use strict';
 
-// ============================================================
-//  レイアウト（横長 / 縦長で切り替え）
-// ============================================================
 const LANES = 3;
 const LAY = {};
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
+const $ = id => document.getElementById(id);
+const clamp = (v,a,b) => v<a?a:v>b?b:v;
+const rnd = n => Math.floor(Math.random()*n);
+const pick = a => a[rnd(a.length)];
+const lerp = (a,b,t) => a + (b-a)*t;
 
+// ---------- 全画面レイアウト（世界座標＝CSSピクセル） ----------
 function layout(){
+  const stage = document.querySelector('.stage');
+  let cssW = Math.max(280, stage.clientWidth  || window.innerWidth);
+  let cssH = Math.max(360, stage.clientHeight || window.innerHeight);
   const prevW = LAY.W || 0;
-  const portrait = window.innerWidth < 720;
-  if(portrait){
-    Object.assign(LAY, {
-      portrait:true, W:640, H:960,
-      boardH:112, chuteW:64, floorY:812,
-      beltH:152, boxW:120, boxH:98, lgW:156, lgH:118,
-      slipW:94, slipH:54, slipFont:33, codeFont:33,
-      cardW:132, cardH:60, progW:150,
-    });
-  }else{
-    Object.assign(LAY, {
-      portrait:false, W:960, H:600,
-      boardH:90, chuteW:78, floorY:496,
-      beltH:98, boxW:98, boxH:76, lgW:130, lgH:96,
-      slipW:78, slipH:44, slipFont:27, codeFont:27,
-      cardW:150, cardH:62, progW:250,
-    });
-  }
-  const area = LAY.floorY - LAY.boardH, step = area / LANES;
+  const portrait = cssH >= cssW * 0.92;
+  const u = portrait ? clamp(cssW/440, .62, 1.7) : clamp(cssH/560, .62, 1.9);
+  Object.assign(LAY, {
+    portrait, W:cssW, H:cssH, u,
+    boardH: Math.round((portrait?66:60)*u),
+    chuteW: Math.round((portrait?52:64)*u),
+    beltH:  Math.round((portrait?100:86)*u),
+    boxW:   Math.round((portrait?84:88)*u),
+    boxH:   Math.round((portrait?68:66)*u),
+    lgW:    Math.round((portrait?110:120)*u),
+    lgH:    Math.round((portrait?90:88)*u),
+    slipW:  Math.round((portrait?78:74)*u),
+    slipH:  Math.round((portrait?46:42)*u),
+    slipFont: Math.round((portrait?27:26)*u),
+    cardW:  Math.round((portrait?118:134)*u),
+    cardH:  Math.round((portrait?54:58)*u),
+  });
+  LAY.top = Math.round((portrait?60:54)*u);           // HUDぶんの上部余白
+  LAY.boardBottom = LAY.top + LAY.boardH;
+  LAY.floorY = Math.round(cssH - (portrait?118:92)*u);
+  const area = LAY.floorY - LAY.boardBottom, step = area/LANES;
   LAY.laneY = [];
-  for(let i=0;i<LANES;i++) LAY.laneY.push(Math.round(LAY.boardH + step*(i+.5)));
-  LAY.k = LAY.W / 960;                       // 速度スケール
-  LAY.minGap = LAY.boxW * 1.62;
-  LAY.cage = {x: LAY.portrait ? 62 : 74, y: LAY.floorY + (LAY.H-LAY.floorY)*0.52};
-  LAY.shafts = LAY.portrait ? [110, 350, 560] : [180, 470, 770];
-
-  // 作業員が立てるマス目（ユーザーには見えない）
+  for(let i=0;i<LANES;i++) LAY.laneY.push(Math.round(LAY.boardBottom + step*(i+.5)));
+  LAY.k = cssW/960;                 // 横断時間を一定に保つ速度スケール
+  LAY.minGap = LAY.boxW*1.6;
+  LAY.cage = {x: Math.round(LAY.chuteW + 42*u), y: LAY.floorY + (cssH-LAY.floorY)*0.42};
+  LAY.shafts = [cssW*0.16, cssW*0.48, cssW*0.79];
   LAY.gridX0 = LAY.chuteW;
-  LAY.cols   = LAY.portrait ? 4 : 6;
+  LAY.cols   = portrait ? 4 : 6;
   LAY.cellW  = (LAY.W - LAY.gridX0) / LAY.cols;
 
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  cv.width = LAY.W*dpr; cv.height = LAY.H*dpr;
-  cv.style.aspectRatio = LAY.W + ' / ' + LAY.H;
+  cv.width = Math.round(cssW*dpr); cv.height = Math.round(cssH*dpr);
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.textBaseline = 'middle';
 
-  // 縦にはみ出さないよう wrap 幅を制限
-  const hudH = document.querySelector('.hud').offsetHeight || 56;
-  const avail = window.innerHeight - hudH - 34;
-  const maxW = Math.min(1020, Math.floor(avail * (LAY.W/LAY.H)), window.innerWidth - 16);
-  document.getElementById('wrap').style.maxWidth = Math.max(300, maxW) + 'px';
-
   initMotes();
   placeHero(true);
-
-  // 進行中なら荷物を新レイアウトへ比例移動させる
-  const ratio = prevW ? LAY.W / prevW : 1;
+  const ratio = prevW ? LAY.W/prevW : 1;
   for(const b of [...S.boxes, ...S.demo]){
     b.y = LAY.laneY[b.lane];
     b.w = b.large ? LAY.lgW : LAY.boxW;
     b.h = b.large ? LAY.lgH : LAY.boxH;
-    b.x = Math.min(b.x * ratio, LAY.W + b.w);
+    b.x = Math.min(b.x*ratio, LAY.W + b.w);
   }
 }
 
-// ============================================================
-//  設定
-// ============================================================
-// ============================================================
-//  バイト先
-// ============================================================
+// ---------- バイト先（すべて時給制） ----------
 const JOBS = [
-  { id:'sort', name:'宅配 仕分けセンター', short:'仕分け', pay:135, lives:3, stamina:38,
-    speed:1.00, spawnMul:1.00, rule:'number', minLv:1,
+  { id:'sort', name:'宅配 仕分けセンター', short:'仕分け', hourly:1180, lives:3, stamina:36,
+    speed:1.14, spawnMul:1.00, rule:'number', minLv:1,
     desc:'伝票の担当番号を読んで、自分の番号だけを抜く。まずはここから。' },
-  { id:'fruit', name:'青果市場 選果ライン', short:'選果', pay:98, lives:4, stamina:30,
-    speed:0.88, spawnMul:0.94, rule:'rotten', minLv:1,
-    desc:'傷んだ果物だけを弾く。番号は読まなくていいが、傷みは見落としやすい。' },
-  { id:'waste', name:'クリーンセンター 分別ライン', short:'分別', wage:'hour', hourly:1380,
-    pay:0, lives:3, stamina:46, speed:1.06, spawnMul:0.62, rule:'swipe3', minLv:3,
-    desc:'3本のレーンに資源が混ざって流れてくる。スワイプで正しいレーン（1カン／2ビン／3ペット）へ移す。時給制。' },
+  { id:'register', name:'コンビニ レジ打ち', short:'レジ', hourly:1250, lives:3, stamina:30,
+    rule:'register', minLv:2,
+    desc:'会計して、正しいお釣りを渡す。もたつくと客が苛立ち、渡し間違えもミス。' },
+  { id:'waste', name:'クリーンセンター 分別ライン', short:'分別', hourly:1420, lives:3, stamina:44,
+    speed:1.20, spawnMul:0.62, rule:'swipe3', minLv:3,
+    desc:'3本のレーンに資源が混ざって流れる。スワイプで正しいレーン（1カン/2ビン/3ペット）へ。' },
 ];
 
 const CFG = {
-  baseSpeed: 92,
-  speedPerLevel: 15,
-  speedInLevel: 0.9,
-  maxSpeed: 275,
-  baseSpawn: 1280,
-  spawnPerLevel: 64,
-  minSpawn: 470,
-  mineRate: 0.36,
-  clearPerLevel: 12,
-  maxLives: 3,
+  baseSpeed:104, speedPerLevel:16, speedInLevel:1.0, maxSpeed:300,
+  baseSpawn:1240, spawnPerLevel:64, minSpawn:450,
+  mineRate:0.36, clearPerLevel:12, maxLives:3,
 };
 
+// ---------- 遊ぶ ----------
+const PLAYS = [
+  {id:'walk',  n:'散歩する',        d:'金はかからない。気分が少し晴れる。',
+   cost:0,    mood:12, stamina:-4,  mins:60},
+  {id:'game',  n:'ゲームセンター',    d:'クレーンとメダル。そこそこ発散できる。',
+   cost:1500, mood:24, stamina:-6,  mins:90},
+  {id:'drink', n:'居酒屋で一杯',      d:'気分は上がるが、体調も財布も大きく削れる。',
+   cost:4600, mood:34, stamina:-10, health:-16, mins:150},
+  {id:'gacha', n:'スマホゲーに課金',  d:'ソシャゲに課金する。爆死か大当たりか。',
+   cost:5000, mood:0,  stamina:-2,  mins:40, gamble:true},
+];
+
+// ---------- 買い物（部屋に飾る・効果なし） ----------
+const SHOP = [
+  {id:'plant',   n:'観葉植物',      d:'窓ぎわに緑を一鉢。',            cost:2800},
+  {id:'rug',     n:'ラグマット',    d:'足元があたたかい。',            cost:5200},
+  {id:'poster',  n:'絵画',          d:'殺風景な壁に一枚。',            cost:8600},
+  {id:'guitar',  n:'ギター',        d:'弾けないけど、置いてあるだけで様になる。', cost:12000},
+  {id:'fridge',  n:'大きな冷蔵庫',  d:'静かでよく冷える。自炊がはかどる（気がする）。', cost:38000},
+  {id:'bike',    n:'原付バイク',    d:'窓の外にとめておく。通勤がちょっと楽…な気がする。', cost:62000},
+];
+
+// ---------- スーパー（食事） ----------
+const MEALS = [
+  {id:'set',     n:'幕の内弁当',    d:'栄養バランス良し。しっかり回復する。',        cost:680, stamina:82, health:11},
+  {id:'bento',   n:'のり弁当',      d:'安定の一食。可もなく不可もなく。',            cost:430, stamina:66, health:3},
+  {id:'onigiri', n:'おにぎり2個',   d:'安いが、あまり満たされない。',                cost:260, stamina:44, health:-2},
+  {id:'cup',     n:'カップ麺',      d:'いちばん安い。続けると体調に来る。',          cost:200, stamina:54, health:-13},
+  {id:'none',    n:'我慢する',      d:'何も買わない。空腹のまま眠る。回復しない。',  cost:0,   stamina:8,  health:-6},
+];
+
 // ============================================================
-//  サウンド
+//  サウンド ＆ BGM
 // ============================================================
 let AC = null;
 const ac = () => (AC = AC || new (window.AudioContext||window.webkitAudioContext)());
+let SND_MUTED = false;
+try{ SND_MUTED = localStorage.getItem('arubaiter.muted') === '1'; }catch(e){}
+
 function tone(freq, dur, type='sine', vol=.15, slideTo=null){
+  if(SND_MUTED) return;
   try{
     const c = ac(), t = c.currentTime;
     const o = c.createOscillator(), g = c.createGain();
@@ -473,6 +555,7 @@ function tone(freq, dur, type='sine', vol=.15, slideTo=null){
   }catch(e){}
 }
 function noise(dur=.12, vol=.12, cut=900){
+  if(SND_MUTED) return;
   try{
     const c = ac(), sr = c.sampleRate, len = Math.max(1, Math.floor(sr*dur));
     const buf = c.createBuffer(1, len, sr), d = buf.getChannelData(0);
@@ -494,7 +577,56 @@ const SFX = {
   level:  () => { [523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,.14,'triangle',.1),i*68)); },
   change: () => { [880,660,880,660].forEach((f,i)=>setTimeout(()=>tone(f,.13,'square',.075),i*130)); },
   over:   () => { [392,349,294,220].forEach((f,i)=>setTimeout(()=>tone(f,.38,'sawtooth',.1),i*165)); },
+  coin:   () => { tone(1180,.05,'square',.09); tone(1760,.07,'sine',.05); },
+  cash:   () => { tone(660,.05,'square',.09); setTimeout(()=>tone(990,.09,'triangle',.09),55); noise(.05,.05,1200); },
+  beep:   () => { tone(1400,.05,'square',.07); },
+  buy:    () => { [660,880,1320].forEach((f,i)=>setTimeout(()=>tone(f,.12,'triangle',.09),i*70)); },
 };
+
+const BGM = {
+  timer:null, step:0, type:null,
+  P:{
+    room:    {ms:470, vol:.045, bass:[147,0,110,0,131,0,98,0],   lead:[0,294,0,349,0,392,0,330]},
+    work:    {ms:300, vol:.05,  bass:[98,98,131,131,110,110,147,147], lead:[392,0,523,0,440,0,587,0]},
+    register:{ms:340, vol:.045, bass:[131,0,165,0,175,0,147,0], lead:[0,523,0,440,0,494,0,392]},
+  }
+};
+function bgmTick(){
+  const p = BGM.P[BGM.type]; if(!p) return;
+  const i = BGM.step % p.bass.length;
+  if(p.bass[i]) tone(p.bass[i], p.ms/1000*.9, 'triangle', p.vol);
+  if(p.lead[i]) tone(p.lead[i], p.ms/1000*.8, 'sine', p.vol*.8);
+  BGM.step++;
+}
+function startBGM(type){
+  BGM.type = type;
+  if(SND_MUTED){ stopTimer(); return; }
+  stopTimer(); BGM.step = 0;
+  try{ ac().resume(); }catch(e){}
+  BGM.timer = setInterval(bgmTick, BGM.P[type].ms);
+}
+function stopTimer(){ if(BGM.timer){ clearInterval(BGM.timer); BGM.timer = null; } }
+function stopBGM(){ stopTimer(); BGM.type = null; }
+function applyMute(){
+  const b = $('btnMute');
+  b.classList.toggle('on', !SND_MUTED);
+  b.innerHTML = SND_MUTED
+    ? '<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9l4 6M21 9l-4 6" stroke="#8698ab" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>'
+    : '<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8a5 5 0 0 1 0 8M18.5 6a8 8 0 0 1 0 12" stroke="#ffb020" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>';
+  if(SND_MUTED) stopTimer();
+  else if(BGM.type) startBGM(BGM.type);
+}
+$('btnMute').addEventListener('click', () => {
+  SND_MUTED = !SND_MUTED;
+  try{ localStorage.setItem('arubaiter.muted', SND_MUTED?'1':'0'); }catch(e){}
+  applyMute();
+});
+// 最初のタップで音声を解放
+window.addEventListener('pointerdown', function once(){
+  try{ ac().resume(); }catch(e){}
+  if(!SND_MUTED && BGM.type && !BGM.timer) startBGM(BGM.type);
+  window.removeEventListener('pointerdown', once);
+}, {once:true});
 
 // ============================================================
 //  状態
@@ -511,14 +643,14 @@ const S = {
   shake:0, flash:0, flashColor:'255,90,77',
   banner:null, boardPulse:0, cagePop:0, chuteAlert:0,
   laneAlert:[0,0,0],
-  demo:[], demoTimer:0, motes:[],   // タイトル画面のアトラクト表示
-  hero:{ col:1, lane:1, px:0, py:0, step:0, bob:0, reach:0 },
+  demo:[], demoTimer:0, motes:[],
+  hero:{ col:1, lane:1, px:0, py:0, tx:0, ty:0, step:0, bob:0, reach:0 },
+  shiftStart:0, endReason:null,
 };
 
-// ---- 作業員（マス目移動） -----------------------------------
+// ---------- 作業員（マス目移動） ----------
 const cellCenter = col => LAY.gridX0 + LAY.cellW*(col + .5);
-const heroFeetY  = lane => LAY.laneY[lane] + LAY.beltH/2 + 16;
-
+const heroFeetY  = lane => LAY.laneY[lane] + LAY.beltH/2 + 16*LAY.u;
 function placeHero(snap){
   const h = S.hero;
   h.col = clamp(h.col, 0, LAY.cols-1);
@@ -533,41 +665,18 @@ function moveHero(dc, dl){
   const nl = clamp(h.lane + dl, 0, LANES-1);
   if(nc === h.col && nl === h.lane) return;
   h.col = nc; h.lane = nl; h.step = 1;
-  placeHero(false);
-  SFX.step();
+  placeHero(false); SFX.step();
 }
-
-// 空気中の埃（光の筋の中で光る）
 function initMotes(){
   S.motes = [];
-  for(let i=0;i<70;i++){
-    S.motes.push({
-      x: Math.random()*LAY.W, y: Math.random()*LAY.H,
-      r: .6 + Math.random()*1.9,
-      vx: -(4 + Math.random()*14),
-      ph: Math.random()*Math.PI*2,
-      amp: 3 + Math.random()*10,
-      a: .12 + Math.random()*.3,
-    });
+  for(let i=0;i<64;i++){
+    S.motes.push({ x:Math.random()*LAY.W, y:Math.random()*LAY.H, r:.6+Math.random()*1.9,
+      vx:-(4+Math.random()*14), ph:Math.random()*Math.PI*2, amp:3+Math.random()*10, a:.12+Math.random()*.3 });
   }
 }
 
-// localStorage はブラウザ設定や埋め込み環境で例外を投げることがある
-const BEST_KEY = 'sortingline.best';
-const best = () => { try{ return +(localStorage.getItem(BEST_KEY)||0); }catch(e){ return 0; } };
-const saveBest = v => { try{ localStorage.setItem(BEST_KEY, v); }catch(e){} };
-
-const rnd = n => Math.floor(Math.random()*n);
-const pick = a => a[rnd(a.length)];
-const lerp = (a,b,t) => a + (b-a)*t;
-const clamp = (v,a,b) => v<a?a:v>b?b:v;
-
-// ---- 番号 ---------------------------------------------------
-function newCode(exclude=[]){
-  let c; do { c = String(100+rnd(900)); } while(exclude.includes(c));
-  return c;
-}
-/** 見間違えやすい番号（1桁違い / 桁の入れ替え）を作る */
+// ---------- 番号（仕分け） ----------
+function newCode(exclude=[]){ let c; do{ c = String(100+rnd(900)); }while(exclude.includes(c)); return c; }
 function confusable(base, exclude){
   for(let i=0;i<24;i++){
     const d = base.split('');
@@ -585,10 +694,7 @@ function confusable(base, exclude){
   return newCode(exclude);
 }
 const ZONES = ['東京 北','東京 南','神奈川','埼玉 中','千葉 東','静岡','名古屋','大阪 北','京都','仙台','新潟','広島','福岡','札幌'];
-
-// レベルが上がるほど担当する番号が増える（最大3）
 const codeCountForLevel = lv => lv >= 8 ? 3 : lv >= 4 ? 2 : 1;
-/** ゲーム開始時の担当を決める。直前のゲームの番号は除外＝毎回ちがう番号になる */
 function assignCodes(){
   const prev = S.codes.slice();
   const n = codeCountForLevel(S.level), out = [];
@@ -598,22 +704,17 @@ function assignCodes(){
   out.forEach(c => { let z; do{ z = pick(ZONES); }while(used.includes(z)); used.push(z); S.zones[c] = z; });
   S.boardPulse = 1;
 }
-
-/** レベルが上がって担当が増えるとき。既存の番号はそのまま残す */
 function addCode(){
   const avoid = S.codes.concat(S.boxes.map(b => b.code));
-  const c = newCode(avoid);
-  S.codes.push(c);
+  const c = newCode(avoid); S.codes.push(c);
   const used = Object.values(S.zones);
   let z; do{ z = pick(ZONES); }while(used.includes(z));
   S.zones[c] = z;
-  // 画面上の荷物も新しい担当で判定し直す（伝票の見た目と判定を一致させる）
   for(const b of S.boxes) if(!b.judged) b.mine = S.codes.includes(b.code);
   S.boardPulse = 1;
 }
 
-// ---- HUD ----------------------------------------------------
-const $ = id => document.getElementById(id);
+// ---------- HUD ----------
 function renderLives(){
   $('missNum').textContent = S.maxLives - S.lives;
   $('missRow').classList.toggle('danger', S.lives === 1);
@@ -630,12 +731,16 @@ function updateHUD(){
   const m = multiplier(), c = $('combo');
   c.innerHTML = S.combo + `<span class="u">x${m}</span>`;
   c.classList.toggle('hot', m > 1);
-  $('level').textContent = S.level;
   renderLives();
 }
 
-// ---- 荷物 ---------------------------------------------------
+// ============================================================
+//  荷物（仕分け／分別ライン）
+// ============================================================
 let seq = 0;
+const isSwipeJob = () => !!(JOB && JOB.rule === 'swipe3');
+const isRegisterJob = () => !!(JOB && JOB.rule === 'register');
+
 function spawn(){
   const free = [];
   for(let l=0;l<LANES;l++){
@@ -645,53 +750,34 @@ function spawn(){
   }
   if(!free.length) return;
   const lane = pick(free);
-
-  // 担当荷物が続けて出ないとレベル進行がだれるので、空きが続いたら強制的に出す
   const mine = S.sinceMine >= 4 || Math.random() < CFG.mineRate;
   S.sinceMine = mine ? 0 : S.sinceMine + 1;
 
-  const rotten = JOB && JOB.rule === 'rotten';
-  const swipe3 = JOB && JOB.rule === 'swipe3';
-  let code = '', rot = 0, type = -1;
-  if(swipe3){
-    // どのレーンにも資源が混ざって流れてくる。正しいレーンへ移すのがプレイヤーの仕事
-    type = rnd(3);
-    code = String(100 + rnd(900));
-  }else if(rotten){
-    // 傷み具合。0.5以上が「弾くべき品」。レベルが上がるほど境目が際どくなる
-    const edge = Math.max(.06, .3 - S.level*.03);
-    rot = mine ? .5 + edge + Math.random()*(.45-edge)
-               : Math.max(0, .5 - edge - Math.random()*.45);
-    code = String(100 + rnd(900));
-  }else if(mine){
-    code = pick(S.codes);
-  }else{
-    // 画面上に同じ番号が並ぶと読む負荷が単調になるので避ける
+  const swipe3 = isSwipeJob();
+  let code = '', type = -1;
+  if(swipe3){ type = rnd(3); code = String(100 + rnd(900)); }
+  else if(mine){ code = pick(S.codes); }
+  else{
     const avoid = S.codes.concat(S.boxes.map(b => b.code));
     const cr = Math.min(.82, .3 + S.level*.07);
     code = Math.random() < cr ? confusable(pick(S.codes), avoid) : newCode(avoid);
   }
-  const plain   = !rotten && !swipe3;
+  const plain   = !swipe3;
   const large   = plain && S.level >= 3 && Math.random() < .15;
   const express = plain && !large && Math.random() < .12;
-  const fragile = !!(JOB && JOB.fragile);
 
   S.boxes.push({
-    id:++seq, lane, code, mine, large, express, rot, type, fragile,
+    id:++seq, lane, code, mine, large, express, type,
     tone: rnd(2),
     x: LAY.W + 110, y: LAY.laneY[lane],
     w: large ? LAY.lgW : LAY.boxW,
     h: large ? LAY.lgH : LAY.boxH,
-    kind: rotten ? 'crate' : swipe3 ? 'waste' : 'box',
-    laneY: LAY.laneY[lane],        // レーン移動のアニメ用
-    tilt: (Math.random()-.5)*.10,
-    tape: .36 + Math.random()*.28,
-    hits:0, judged:false, hitFx:0, wrongFx:0,
-    bornT:S.t, enterT:null,   // enterT = 全身が画面に入った時刻（反応時間の起点）
+    kind: swipe3 ? 'waste' : 'box',
+    tilt:(Math.random()-.5)*.10, tape:.36+Math.random()*.28,
+    hits:0, judged:false, hitFx:0, wrongFx:0, held:0,
+    bornT:S.t, enterT:null,
   });
 }
-
-/** タイトル画面用：判定を持たない見せかけの荷物 */
 function spawnDemo(){
   const free = [];
   for(let l=0;l<LANES;l++){
@@ -702,17 +788,12 @@ function spawnDemo(){
   if(!free.length) return;
   const lane = pick(free);
   const large = Math.random() < .14, express = !large && Math.random() < .14;
-  S.demo.push({
-    id:++seq, lane, code:newCode([]), mine:false, large, express,
-    x: LAY.W + 110, y: LAY.laneY[lane],
-    w: large ? LAY.lgW : LAY.boxW,
-    h: large ? LAY.lgH : LAY.boxH,
-    tilt:(Math.random()-.5)*.10, tape:.36+Math.random()*.28,
-    hits:0, judged:false, hitFx:0, wrongFx:0,
-  });
+  S.demo.push({ id:++seq, lane, code:newCode([]), mine:false, large, express, type:-1, kind:'box',
+    x:LAY.W+110, y:LAY.laneY[lane], w:large?LAY.lgW:LAY.boxW, h:large?LAY.lgH:LAY.boxH,
+    tilt:(Math.random()-.5)*.10, tape:.36+Math.random()*.28, hits:0, judged:false, hitFx:0, wrongFx:0, tone:rnd(2) });
 }
 
-// ---- エフェクト ---------------------------------------------
+// ---------- エフェクト ----------
 function burst(x,y,color,n=14,sp=220){
   for(let i=0;i<n;i++){
     const a = Math.random()*Math.PI*2, s = 50 + Math.random()*sp;
@@ -720,22 +801,18 @@ function burst(x,y,color,n=14,sp=220){
   }
 }
 const floatText = (x,y,text,color,size=26) =>
-  S.texts.push({x:clamp(x, 78, LAY.W-78), y, text, color, size, t:0, life:.95});
+  S.texts.push({x:clamp(x, 78, LAY.W-78), y, text, color, size:size*Math.min(1.2,LAY.u+.2), t:0, life:.95});
 const ring = (x,y,color='255,255,255') => S.rings.push({x,y,t:0,life:.4,color});
 
-// ============================================================
-//  操作
-// ============================================================
+// ---------- 仕分け（番号）操作 ----------
 function tryPick(b){
   if(!b || b.judged) return;
-  const ok = b.mine, reason = '誤仕分け';
-  if(ok){
+  if(b.mine){
     b.hits++;
-    if(b.hits < ((b.large || b.fragile) ? 2 : 1)){
+    if(b.hits < (b.large ? 2 : 1)){
       b.hitFx = 1; SFX.half();
       floatText(b.x, b.y - b.h/2 - 12, 'もう一押し', '#ffb020', 17);
-      ring(b.x, b.y, '255,176,32');
-      return;
+      ring(b.x, b.y, '255,176,32'); return;
     }
     b.judged = true;
     const m = multiplier();
@@ -743,9 +820,7 @@ function tryPick(b){
     S.score += add; S.combo++;
     S.bestCombo = Math.max(S.bestCombo, S.combo);
     S.cleared++; S.clearedInLevel++;
-    // 画面に入りきる前に抜いた場合は出現時刻を起点にする（＝最速扱い）
-    S.reactSum += Math.max(0, S.t - (b.enterT !== null ? b.enterT : b.bornT));
-    S.reactN++;
+    S.reactSum += Math.max(0, S.t - (b.enterT !== null ? b.enterT : b.bornT)); S.reactN++;
     S.flying.push(Object.assign({}, b, {t:0, dur:.42, sx:b.x, sy:b.y}));
     S.boxes = S.boxes.filter(o => o.id !== b.id);
     burst(b.x, b.y, b.express ? '63,209,139' : '255,176,32', b.express?22:13);
@@ -756,35 +831,28 @@ function tryPick(b){
     updateHUD();
   }else{
     b.judged = true; b.wrongFx = 1; S.wrongPicks++;
-    damage(reason, b.x, b.y);
+    damage('誤仕分け', b.x, b.y);
   }
 }
-
 function damage(reason, x, y){
   S.lives--; S.combo = 0;
   S.shake = 1; S.flash = 1; S.flashColor = '255,90,77';
   if(x != null) floatText(x, y-26, reason, '#ff9a90', 24);
-  SFX.wrong();
-  updateHUD();
-  if(S.lives <= 0) gameOver();
+  SFX.wrong(); updateHUD();
+  if(S.lives <= 0) endWork();
 }
-
 function levelUp(){
   S.level++; S.clearedInLevel = 0;
-  // 途中で担当番号が入れ替わることはない。増えるだけ（最大3）
-  if(codeCountForLevel(S.level) > S.codes.length){
+  if(!isRegisterJob() && codeCountForLevel(S.level) > S.codes.length){
     addCode();
-    S.banner = {text:'担 当 追 加', sub:`LEVEL ${S.level}・担当が ${S.codes.length} 番号になった`, t:0, color:'#ff9c3c'};
+    S.banner = {text:'担 当 追 加', sub:`LEVEL ${S.level}・担当が ${S.codes.length} 番号に`, t:0, color:'#ff9c3c'};
     SFX.change();
   }else{
-    S.banner = {text:'LEVEL '+S.level, sub:'ラインが速くなる', t:0, color:'#ffb020'};
+    S.banner = {text:'LEVEL '+S.level, sub:isRegisterJob()?'客あしが速くなる':'ラインが速くなる', t:0, color:'#ffb020'};
     SFX.level();
   }
-  S.flash = .55; S.flashColor = '255,176,32';
-  updateHUD();
+  S.flash = .55; S.flashColor = '255,176,32'; updateHUD();
 }
-
-/** 作業員の目の前（担当マス）にある荷物を返す */
 function boxInReach(){
   const h = S.hero;
   const cx = cellCenter(h.col), half = LAY.cellW/2;
@@ -794,22 +862,18 @@ function boxInReach(){
     const d = Math.abs(b.x - cx);
     if(d <= half && d < best){ best = d; found = b; }
   }
-  // 判定済みの荷物が目の前にある間は、その奥を掴めない
   return found && found.judged ? null : found;
 }
-
 function grab(){
-  if(!S.running || isSwipeJob()) return;
+  if(!S.running || isSwipeJob() || isRegisterJob()) return;
   S.hero.reach = 1;
   const b = boxInReach();
   if(b) tryPick(b);
   else { ring(cellCenter(S.hero.col), LAY.laneY[S.hero.lane], '255,200,90'); SFX.empty(); }
 }
 
-const isSwipeJob = () => !!(JOB && JOB.rule === 'swipe3');
-
-/** 分別ライン：資源をつまんで上下のレーンへ移す */
-const DRAG = { id:null, y0:0, dy:0, ox:0 };
+// ---------- 分別ライン：つまんで上下スワイプ ----------
+const DRAG = { id:null, y0:0, dy:0 };
 function pointerPos(e){
   const r = cv.getBoundingClientRect();
   return { x:(e.clientX-r.left)*(LAY.W/r.width), y:(e.clientY-r.top)*(LAY.H/r.height) };
@@ -829,240 +893,271 @@ function pickAt(px, py){
 function moveLane(b, dir){
   const nl = clamp(b.lane + dir, 0, LANES-1);
   if(nl === b.lane) return false;
-  b.lane = nl;
-  SFX.step();
-  ring(b.x, LAY.laneY[nl], '255,206,90');
-  return true;
+  b.lane = nl; SFX.step(); ring(b.x, LAY.laneY[nl], '255,206,90'); return true;
 }
-
-cv.addEventListener('pointerdown', e => {
-  e.preventDefault();
-  if(!S.running) return;
-  if(!isSwipeJob()){ grab(); return; }
-  const p = pointerPos(e);
-  const b = pickAt(p.x, p.y);
-  if(b){ DRAG.id = b.id; DRAG.y0 = p.y; DRAG.dy = 0; DRAG.ox = p.x - b.x; b.held = 1; }
-  else ring(p.x, p.y, '120,150,180');
-});
-cv.addEventListener('pointermove', e => {
-  if(DRAG.id === null) return;
-  const p = pointerPos(e);
-  DRAG.dy = p.y - DRAG.y0;
-});
 function endDrag(){
   if(DRAG.id === null) return;
   const b = S.boxes.find(o => o.id === DRAG.id);
   if(b){
     b.held = 0;
     const step = LAY.laneY[1] - LAY.laneY[0];
-    const n = Math.round(DRAG.dy / (step*.55));
+    const n = Math.round(DRAG.dy / (step*0.72));   // 1レーンぶんのドラッグ＝1レーン移動（真ん中に置ける）
     if(n !== 0) moveLane(b, clamp(n, -2, 2));
   }
   DRAG.id = null; DRAG.dy = 0;
 }
+
+// ============================================================
+//  レジ打ち（コンビニ）
+// ============================================================
+const REG = {
+  denoms:[5000,1000,500,100,50,10,5,1],
+  cust:null, tray:{}, hit:[], fly:[],
+  state:'gap', gap:0.4,
+};
+const traySum = () => REG.denoms.reduce((s,d)=> s + d*(REG.tray[d]||0), 0);
+const denomKind = d => d >= 1000 ? 'bill' : 'coin';
+
+function newCustomer(){
+  const lv = S.level;
+  const cap = 380 + lv*260;
+  let total = (Math.floor(Math.random() * ((cap-110)/10)) + 11) * 10;   // 110〜cap（10円単位）
+  let paid = Math.ceil((total+1)/1000) * 1000;                           // 千円札で支払う
+  if(Math.random() < .35) paid += 1000;                                  // 多めに出すことも
+  if(lv >= 2 && Math.random() < .4){                                     // 小銭を足してお釣りを丸める客
+    const frac = total % 100;
+    if(frac) paid += (100 - frac);
+  }
+  const change = paid - total;
+  REG.cust = { total, paid, change, pat:1, patMax:clamp(11 - lv*0.55, 5, 11), face:rnd(4), x:1, ready:0 };
+  REG.tray = {};
+}
+function nextCustomer(){ REG.state = 'gap'; REG.gap = 0.45; REG.cust = null; REG.tray = {}; REG.fly.length = 0; }
+
+function regDispense(d){
+  REG.tray[d] = (REG.tray[d]||0) + 1;
+  denomKind(d) === 'bill' ? SFX.cash() : SFX.coin();
+}
+function regRemove(d){
+  if(REG.tray[d] > 0){ REG.tray[d]--; tone(300,.05,'sine',.05); }
+}
+function regSubmit(){
+  const c = REG.cust; if(!c) return;
+  const sum = traySum();
+  if(sum === c.change){
+    S.cleared++; S.clearedInLevel++; S.combo++;
+    S.bestCombo = Math.max(S.bestCombo, S.combo);
+    const m = multiplier();
+    const add = 100*m + Math.round(c.pat*60);
+    S.score += add;
+    SFX.cash(); setTimeout(()=>tone(1320,.12,'triangle',.08),60);
+    ring(LAY.W*0.5, LAY.H*0.24, '63,209,139');
+    floatText(LAY.W*0.5, LAY.H*0.2, 'ありがとうございました  +'+add, '#3fd18b', 24);
+    if(S.clearedInLevel >= CFG.clearPerLevel) levelUp();
+    updateHUD();
+  }else{
+    S.wrongPicks++;
+    damage(sum < c.change ? 'お釣り不足' : 'お釣り出しすぎ', LAY.W*0.5, LAY.H*0.24);
+  }
+  nextCustomer();
+}
+
+// ============================================================
+//  入力ルーティング
+// ============================================================
+cv.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  if(!S.running) return;
+  const p = pointerPos(e);
+  if(isRegisterJob()){ regPointer(p); return; }
+  if(isSwipeJob()){
+    const b = pickAt(p.x, p.y);
+    if(b){ DRAG.id = b.id; DRAG.y0 = p.y; DRAG.dy = 0; b.held = 1; }
+    else ring(p.x, p.y, '120,150,180');
+    return;
+  }
+  // 仕分け（番号）：画面タップでは取らない。取るのはボタン／キーのみ
+});
+cv.addEventListener('pointermove', e => { if(DRAG.id !== null){ const p = pointerPos(e); DRAG.dy = p.y - DRAG.y0; } });
 cv.addEventListener('pointerup', endDrag);
 cv.addEventListener('pointercancel', endDrag);
 cv.addEventListener('pointerleave', endDrag);
 
-const KEYMAP = {
-  ArrowLeft:[-1,0], ArrowRight:[1,0], ArrowUp:[0,-1], ArrowDown:[0,1],
-  a:[-1,0], d:[1,0], w:[0,-1], s:[0,1],
-};
-window.addEventListener('keydown', e => {
-  if(!S.running){
-    if(e.key === ' ' || e.key === 'Enter'){
-      e.preventDefault();
-      if(!$('ovTitle').classList.contains('hide') || !$('ovOver').classList.contains('hide')) start();
+function regPointer(p){
+  for(const r of REG.hit){
+    if(p.x >= r.x && p.x <= r.x+r.w && p.y >= r.y && p.y <= r.y+r.h){
+      if(r.type === 'den')   regDispense(r.val);
+      else if(r.type==='tray') regRemove(r.val);
+      else if(r.type==='ok')   regSubmit();
+      else if(r.type==='clr'){ REG.tray = {}; tone(260,.06,'sine',.05); }
+      return;
     }
-    return;
   }
-  const mv = KEYMAP[e.key] || KEYMAP[e.key.toLowerCase && e.key.toLowerCase()];
-  if(mv){ e.preventDefault(); moveHero(mv[0], mv[1]); return; }
-  if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); grab(); }
-});
+}
 
-// 画面上の十字キー／取るボタン（タッチ用）
+const KEYMAP = { ArrowLeft:[-1,0], ArrowRight:[1,0], ArrowUp:[0,-1], ArrowDown:[0,1],
+  a:[-1,0], d:[1,0], w:[0,-1], s:[0,1] };
+window.addEventListener('keydown', e => {
+  if(!S.running) return;
+  if(isRegisterJob()){ if(e.key===' '||e.key==='Enter'){ e.preventDefault(); regSubmit(); } return; }
+  const mv = KEYMAP[e.key] || (e.key.toLowerCase && KEYMAP[e.key.toLowerCase()]);
+  if(mv && !isSwipeJob()){ e.preventDefault(); moveHero(mv[0], mv[1]); return; }
+  if((e.key===' '||e.key==='Enter') && !isSwipeJob()){ e.preventDefault(); grab(); }
+});
 document.querySelectorAll('[data-dir]').forEach(el => {
-  el.addEventListener('pointerdown', e => {
-    e.preventDefault();
-    const [dc,dl] = el.dataset.dir.split(',').map(Number);
-    moveHero(dc, dl);
-  });
+  el.addEventListener('pointerdown', e => { e.preventDefault();
+    const [dc,dl] = el.dataset.dir.split(',').map(Number); moveHero(dc, dl); });
 });
 $('btnGrab').addEventListener('pointerdown', e => { e.preventDefault(); grab(); });
-
-// タブが隠れている間は進めない（理不尽なミス防止）
 document.addEventListener('visibilitychange', () => {
   S.paused = document.hidden;
-  if(!document.hidden) last = performance.now();
+  if(document.hidden) stopTimer();
+  else { last = performance.now(); if(!SND_MUTED && BGM.type) startBGM(BGM.type); }
 });
 
 // ============================================================
 //  更新
 // ============================================================
-// 上限を設けないと「読む」ゲームではなく反射の運ゲーになるため頭打ちにする
-const speedNow = () => Math.min(
-  CFG.maxSpeed,
-  CFG.baseSpeed + (S.level-1)*CFG.speedPerLevel + S.clearedInLevel*CFG.speedInLevel
-) * LAY.k * (JOB ? JOB.speed : 1);
+const speedNow = () => Math.min(CFG.maxSpeed,
+  CFG.baseSpeed + (S.level-1)*CFG.speedPerLevel + S.clearedInLevel*CFG.speedInLevel) * LAY.k * (JOB ? (JOB.speed||1) : 1);
 const spawnInterval = () =>
-  Math.max(CFG.minSpawn, CFG.baseSpawn - (S.level-1)*CFG.spawnPerLevel) * (JOB ? JOB.spawnMul : 1);
+  Math.max(CFG.minSpawn, CFG.baseSpawn - (S.level-1)*CFG.spawnPerLevel) * (JOB ? (JOB.spawnMul||1) : 1);
 
 function update(dt){
   S.t += dt;
   S.dispScore += (S.score - S.dispScore) * Math.min(1, dt*9);
   if(Math.abs(S.score - S.dispScore) < .6) S.dispScore = S.score;
-  $('score').textContent = Math.round(S.dispScore);
 
   if(S.running && !S.paused){
-    // 勤務中は時計が進む。長く続くほど稼げるが、その分夜が短くなる
     LIFE.clock += dt * CLOCK_RATE;
-    if(LIFE.clock >= LAST_TRAIN && !S.endReason){ S.endReason = 'lasttrain'; gameOver(); }
-
-    S.spawnTimer -= dt*1000;
-    if(S.spawnTimer <= 0){
-      spawn();
-      S.spawnTimer = spawnInterval() * (.84 + Math.random()*.34);
-    }
-    const v = speedNow(), gone = [];
-    const swipe = isSwipeJob(), laneStep = LAY.laneY[1] - LAY.laneY[0];
-    for(const b of S.boxes){
-      b.x -= v*dt;
-      if(swipe){
-        // レーン移動のアニメ＋ドラッグ中の追従
-        const target = LAY.laneY[b.lane] + (DRAG.id === b.id ? clamp(DRAG.dy, -laneStep*1.1, laneStep*1.1)*.55 : 0);
-        b.y += (target - b.y) * Math.min(1, dt*16);
-      }
-      if(b.enterT === null && b.x + b.w/2 <= LAY.W) b.enterT = S.t;
-      if(b.hitFx>0)   b.hitFx   = Math.max(0, b.hitFx - dt*4);
-      if(b.wrongFx>0) b.wrongFx = Math.max(0, b.wrongFx - dt*1.8);
-      if(b.x + b.w/2 < LAY.chuteW - 6) gone.push(b);
-    }
-    if(gone.length){
-      const ids = new Set(gone.map(g=>g.id));
-      S.boxes = S.boxes.filter(b => !ids.has(b.id));
-      for(const g of gone){
-        if(g.judged) continue;
-        if(swipe){
-          // 正しいレーンのままカゴへ落ちれば処理成功、違えば誤混入
-          if(g.lane === g.type){
-            S.cleared++; S.clearedInLevel++; S.combo++;
-            S.bestCombo = Math.max(S.bestCombo, S.combo);
-            S.score += 100 * multiplier();
-            burst(LAY.chuteW+40, g.y, '63,209,139', 10, 140);
-            SFX.pick();
-            if(S.clearedInLevel >= CFG.clearPerLevel) levelUp();
-            updateHUD();
-          }else{
-            S.chuteAlert = 1; S.laneAlert[g.lane] = 1; S.dropped++;
-            SFX.drop();
-            damage('誤混入', LAY.chuteW+58, g.y);
-          }
-        }else if(g.mine){
-          S.chuteAlert = 1; S.laneAlert[g.lane] = 1; S.dropped++;
-          SFX.drop();
-          damage('取りこぼし', LAY.chuteW+56, g.y);
-        }
-      }
-    }
+    $('hudClock').textContent = hhmm(LIFE.clock);
+    if(LIFE.clock >= LAST_TRAIN && !S.endReason){ S.endReason = 'lasttrain'; endWork(); }
+    else if(S.scene === 'line')     updateLine(dt);
+    else if(S.scene === 'register') updateRegister(dt);
   }
 
-  // 勤務前後：ラインだけが動き続けるアトラクト表示
+  // アトラクト（勤務前のライン）
   if(!S.running && S.scene === 'line'){
     S.demoTimer -= dt*1000;
     if(S.demoTimer <= 0){ spawnDemo(); S.demoTimer = 760 + Math.random()*700; }
-    for(const b of S.demo) b.x -= 62*dt;
+    for(const b of S.demo) b.x -= 62*dt*LAY.k;
     S.demo = S.demo.filter(b => b.x + b.w/2 > -30);
-  }else if(S.demo.length){
-    S.demo.length = 0;
-  }
-  // 作業員：マス目間をスッと詰める
-  {
-    const h = S.hero;
+  }else if(S.demo.length){ S.demo.length = 0; }
+
+  // 作業員
+  { const h = S.hero;
     if(h.tx === undefined) placeHero(true);
     const k = Math.min(1, dt*17);
-    h.px += (h.tx - h.px) * k;
-    h.py += (h.ty - h.py) * k;
+    h.px += (h.tx - h.px)*k; h.py += (h.ty - h.py)*k;
     h.step = Math.max(0, h.step - dt*4.5);
     h.reach = Math.max(0, h.reach - dt*4);
     h.bob += dt * (h.step > .05 ? 16 : 4);
   }
-
-  // 埃はゆっくり流れ続ける
-  for(const m of S.motes){
-    m.x += m.vx*dt;
-    if(m.x < -8){ m.x = LAY.W + 8; m.y = Math.random()*LAY.H; }
-  }
+  for(const m of S.motes){ m.x += m.vx*dt; if(m.x < -8){ m.x = LAY.W+8; m.y = Math.random()*LAY.H; } }
 
   for(const f of S.flying){
     f.t += dt;
     const p = clamp(f.t/f.dur, 0, 1), e = 1 - Math.pow(1-p, 2.2);
     f.x = lerp(f.sx, LAY.cage.x, e);
     f.y = lerp(f.sy, LAY.cage.y-18, e) - Math.sin(p*Math.PI)*90;
-    f.scale = 1 - .62*p;
-    f.rot = p * (f.sx > LAY.cage.x ? -.7 : .7);
-    if(p >= 1 && !f.done){
-      f.done = true; S.cagePop = 1; SFX.land();
-      burst(LAY.cage.x, LAY.cage.y-14, '255,176,32', 8, 110);
-    }
+    f.scale = 1 - .62*p; f.rot = p * (f.sx > LAY.cage.x ? -.7 : .7);
+    if(p >= 1 && !f.done){ f.done = true; S.cagePop = 1; SFX.land(); burst(LAY.cage.x, LAY.cage.y-14, '255,176,32', 8, 110); }
   }
   S.flying = S.flying.filter(f => f.t < f.dur + .02);
-
   for(const p of S.fx){ p.t += dt; p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 640*dt; }
   S.fx = S.fx.filter(p => p.t < p.life);
   for(const t of S.texts){ t.t += dt; t.y -= 42*dt; }
   S.texts = S.texts.filter(t => t.t < t.life);
   for(const r of S.rings) r.t += dt;
   S.rings = S.rings.filter(r => r.t < r.life);
+  for(const f of REG.fly){ f.t += dt; }
+  REG.fly = REG.fly.filter(f => f.t < f.dur);
 
-  S.shake      = Math.max(0, S.shake - dt*3.2);
-  S.flash      = Math.max(0, S.flash - dt*2.2);
+  S.shake = Math.max(0, S.shake - dt*3.2);
+  S.flash = Math.max(0, S.flash - dt*2.2);
   S.boardPulse = Math.max(0, S.boardPulse - dt*.55);
-  S.cagePop    = Math.max(0, S.cagePop - dt*3.4);
+  S.cagePop = Math.max(0, S.cagePop - dt*3.4);
   S.chuteAlert = Math.max(0, S.chuteAlert - dt*1.4);
   for(let i=0;i<LANES;i++) S.laneAlert[i] = Math.max(0, S.laneAlert[i] - dt*1.4);
   if(S.banner){ S.banner.t += dt; if(S.banner.t > 1.9) S.banner = null; }
 }
 
-// ============================================================
-//  描画ヘルパ
-// ============================================================
-function rr(x,y,w,h,r){
-  ctx.beginPath();
-  ctx.moveTo(x+r,y);
-  ctx.arcTo(x+w,y,x+w,y+h,r);
-  ctx.arcTo(x+w,y+h,x,y+h,r);
-  ctx.arcTo(x,y+h,x,y,r);
-  ctx.arcTo(x,y,x+w,y,r);
-  ctx.closePath();
-}
-function hexA(hex,a){
-  const n = parseInt(hex.slice(1),16);
-  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
-}
-function hazardStripes(x,y,w,h,alpha){
-  ctx.save();
-  ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
-  ctx.fillStyle = `rgba(22,26,31,${alpha})`; ctx.fillRect(x,y,w,h);
-  ctx.strokeStyle = `rgba(255,176,32,${alpha*.8})`; ctx.lineWidth = 9;
-  for(let i=-h; i<w+h; i+=26){
-    ctx.beginPath(); ctx.moveTo(x+i, y+h); ctx.lineTo(x+i+h, y); ctx.stroke();
+function updateLine(dt){
+  S.spawnTimer -= dt*1000;
+  if(S.spawnTimer <= 0){ spawn(); S.spawnTimer = spawnInterval() * (.84 + Math.random()*.34); }
+  const v = speedNow(), gone = [];
+  const swipe = isSwipeJob(), laneStep = LAY.laneY[1] - LAY.laneY[0];
+  for(const b of S.boxes){
+    b.x -= v*dt;
+    if(swipe){
+      const target = LAY.laneY[b.lane] + (DRAG.id === b.id ? clamp(DRAG.dy, -laneStep*1.1, laneStep*1.1)*.55 : 0);
+      b.y += (target - b.y) * Math.min(1, dt*16);
+    }
+    if(b.enterT === null && b.x + b.w/2 <= LAY.W) b.enterT = S.t;
+    if(b.hitFx>0)   b.hitFx   = Math.max(0, b.hitFx - dt*4);
+    if(b.wrongFx>0) b.wrongFx = Math.max(0, b.wrongFx - dt*1.8);
+    if(b.x + b.w/2 < LAY.chuteW - 6) gone.push(b);
   }
-  ctx.restore();
+  if(gone.length){
+    const ids = new Set(gone.map(g=>g.id));
+    S.boxes = S.boxes.filter(b => !ids.has(b.id));
+    for(const g of gone){
+      if(g.judged) continue;
+      if(swipe){
+        if(g.lane === g.type){
+          S.cleared++; S.clearedInLevel++; S.combo++;
+          S.bestCombo = Math.max(S.bestCombo, S.combo);
+          S.score += 100 * multiplier();
+          burst(LAY.chuteW+40, g.y, '63,209,139', 10, 140); SFX.pick();
+          if(S.clearedInLevel >= CFG.clearPerLevel) levelUp();
+          updateHUD();
+        }else{
+          S.chuteAlert = 1; S.laneAlert[g.lane] = 1; S.dropped++;
+          SFX.drop(); damage('誤混入', LAY.chuteW+58, g.y);
+        }
+      }else if(g.mine){
+        S.chuteAlert = 1; S.laneAlert[g.lane] = 1; S.dropped++;
+        SFX.drop(); damage('取りこぼし', LAY.chuteW+56, g.y);
+      }
+    }
+  }
+}
+
+function updateRegister(dt){
+  if(REG.state === 'gap'){ REG.gap -= dt; if(REG.gap <= 0){ REG.state = 'serving'; newCustomer(); } return; }
+  const c = REG.cust; if(!c){ newCustomer(); return; }
+  c.x += (0 - c.x) * Math.min(1, dt*8);
+  c.ready = Math.min(1, c.ready + dt*3);
+  c.pat -= dt / c.patMax;
+  if(c.pat <= 0){ S.dropped++; damage('お客さんが怒った', LAY.W*0.5, LAY.H*0.24); nextCustomer(); }
 }
 
 // ============================================================
-//  描画
+//  描画ヘルパ
 // ============================================================
+const F = px => Math.round(px*LAY.u);
+function rr(x,y,w,h,r){
+  ctx.beginPath(); ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+function hexA(hex,a){ const n = parseInt(hex.slice(1),16); return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`; }
+function hazardStripes(x,y,w,h,alpha){
+  ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
+  ctx.fillStyle = `rgba(22,26,31,${alpha})`; ctx.fillRect(x,y,w,h);
+  ctx.strokeStyle = `rgba(255,176,32,${alpha*.8})`; ctx.lineWidth = 9;
+  for(let i=-h;i<w+h;i+=26){ ctx.beginPath(); ctx.moveTo(x+i, y+h); ctx.lineTo(x+i+h, y); ctx.stroke(); }
+  ctx.restore();
+}
+
 function drawWarehouse(){
   const {W,H} = LAY;
   const g = ctx.createLinearGradient(0,0,0,H);
   g.addColorStop(0,'#1a242e'); g.addColorStop(.55,'#121a21'); g.addColorStop(1,'#0b1015');
   ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
   ctx.strokeStyle = 'rgba(255,255,255,.022)'; ctx.lineWidth = 8;
-  for(let i=0;i<10;i++){ ctx.beginPath(); ctx.moveTo(-80+i*140,0); ctx.lineTo(30+i*140,H); ctx.stroke(); }
+  for(let i=0;i<12;i++){ ctx.beginPath(); ctx.moveTo(-80+i*140,0); ctx.lineTo(30+i*140,H); ctx.stroke(); }
 }
-
 function drawBelt(lane){
   const {W, beltH} = LAY;
   const cy = LAY.laneY[lane], top = cy - beltH/2;
@@ -1070,433 +1165,183 @@ function drawBelt(lane){
   const g = ctx.createLinearGradient(0,top,0,top+beltH);
   g.addColorStop(0,'#3b4653'); g.addColorStop(.45,'#2b333c'); g.addColorStop(1,'#1c2229');
   ctx.fillStyle = g; ctx.fillRect(0,top,W,beltH);
-
   const gap = 34, off = (S.t * (S.running && !S.paused ? speedNow() : 36)) % gap;
   ctx.strokeStyle = 'rgba(255,255,255,.05)'; ctx.lineWidth = 9; ctx.lineCap = 'round';
-  for(let x = W-off; x > -gap; x -= gap){
-    ctx.beginPath(); ctx.moveTo(x, top+11); ctx.lineTo(x, top+beltH-11); ctx.stroke();
-  }
+  for(let x = W-off; x > -gap; x -= gap){ ctx.beginPath(); ctx.moveTo(x, top+11); ctx.lineTo(x, top+beltH-11); ctx.stroke(); }
   ctx.lineCap = 'butt';
-  // 進行方向マーク
   ctx.fillStyle = 'rgba(255,255,255,.035)';
-  for(let x = W - ((S.t*40)%190); x > 0; x -= 190){
-    ctx.beginPath(); ctx.moveTo(x, cy-9); ctx.lineTo(x-16, cy); ctx.lineTo(x, cy+9); ctx.closePath(); ctx.fill();
-  }
+  for(let x = W - ((S.t*40)%190); x > 0; x -= 190){ ctx.beginPath(); ctx.moveTo(x, cy-9); ctx.lineTo(x-16, cy); ctx.lineTo(x, cy+9); ctx.closePath(); ctx.fill(); }
   ctx.fillStyle = '#4d5a69'; ctx.fillRect(0, top-6, W, 6);
   ctx.fillStyle = 'rgba(255,255,255,.10)'; ctx.fillRect(0, top-6, W, 1.5);
   ctx.fillStyle = '#12171d'; ctx.fillRect(0, top+beltH, W, 6);
 }
-
-/** 作業員が手を伸ばせる範囲（うっすら黄色） */
 function drawReach(){
-  if(!S.running || isSwipeJob()) return;
+  if(!S.running || isSwipeJob() || isRegisterJob()) return;
   const h = S.hero;
   const cx = h.px, cy = LAY.laneY[h.lane];
   const w = LAY.cellW, hh = LAY.beltH;
   const x = cx - w/2, y = cy - hh/2;
   const pulse = .055 + Math.sin(S.t*2.4)*.012 + h.reach*.10;
-
   ctx.save();
   const g = ctx.createLinearGradient(0, y, 0, y+hh);
-  g.addColorStop(0,   `rgba(255,206,90,${pulse*.55})`);
-  g.addColorStop(.5,  `rgba(255,206,90,${pulse})`);
-  g.addColorStop(1,   `rgba(255,206,90,${pulse*.75})`);
+  g.addColorStop(0, `rgba(255,206,90,${pulse*.55})`); g.addColorStop(.5, `rgba(255,206,90,${pulse})`); g.addColorStop(1, `rgba(255,206,90,${pulse*.75})`);
   ctx.fillStyle = g; ctx.fillRect(x, y, w, hh);
-
-  // 縁と四隅のブラケット
-  ctx.strokeStyle = `rgba(255,206,90,${.22 + h.reach*.5})`;
-  ctx.lineWidth = 1.5; ctx.setLineDash([7,7]); ctx.lineDashOffset = -S.t*14;
-  ctx.strokeRect(x+.75, y+.75, w-1.5, hh-1.5);
-  ctx.setLineDash([]);
+  ctx.strokeStyle = `rgba(255,206,90,${.22 + h.reach*.5})`; ctx.lineWidth = 1.5; ctx.setLineDash([7,7]); ctx.lineDashOffset = -S.t*14;
+  ctx.strokeRect(x+.75, y+.75, w-1.5, hh-1.5); ctx.setLineDash([]);
   ctx.strokeStyle = `rgba(255,206,90,${.5 + h.reach*.5})`; ctx.lineWidth = 2.4;
   const c = 15;
   [[x,y,1,1],[x+w,y,-1,1],[x,y+hh,1,-1],[x+w,y+hh,-1,-1]].forEach(([px,py,sx,sy]) => {
-    ctx.beginPath();
-    ctx.moveTo(px + c*sx, py); ctx.lineTo(px, py); ctx.lineTo(px, py + c*sy);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px + c*sx, py); ctx.lineTo(px, py); ctx.lineTo(px, py + c*sy); ctx.stroke();
   });
   ctx.restore();
 }
-
-/** 作業員（背中側から見た上半身） */
 function drawHero(){
-  if(!S.running || isSwipeJob()) return;
-  const h = S.hero;
-  const x = h.px, y = h.py;                 // y = 足元
+  if(!S.running || isSwipeJob() || isRegisterJob()) return;
+  const h = S.hero; const x = h.px, y = h.py;
   const sway = Math.sin(h.bob) * (h.step > .05 ? 2.2 : .7);
   const reach = h.reach;
-
-  ctx.save();
-  ctx.translate(x, y);
-  // 影
-  ctx.fillStyle = 'rgba(0,0,0,.45)';
-  ctx.beginPath(); ctx.ellipse(0, 2, 19, 5.5, 0, 0, Math.PI*2); ctx.fill();
+  ctx.save(); ctx.translate(x, y); ctx.scale(LAY.u, LAY.u);
+  ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.beginPath(); ctx.ellipse(0, 2, 19, 5.5, 0, 0, Math.PI*2); ctx.fill();
   ctx.translate(sway*.4, -Math.abs(sway)*.5);
-
-  // 腕（荷物へ伸ばす）
   const ar = reach*10;
   ctx.strokeStyle = '#2e3a47'; ctx.lineWidth = 6; ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(-11, -26); ctx.lineTo(-15, -34 - ar);
-  ctx.moveTo( 11, -26); ctx.lineTo( 15, -34 - ar);
-  ctx.stroke();
-  // 手袋
+  ctx.beginPath(); ctx.moveTo(-11, -26); ctx.lineTo(-15, -34 - ar); ctx.moveTo( 11, -26); ctx.lineTo( 15, -34 - ar); ctx.stroke();
   ctx.fillStyle = '#e8eef4';
   ctx.beginPath(); ctx.arc(-15, -35-ar, 3.6, 0, Math.PI*2); ctx.fill();
   ctx.beginPath(); ctx.arc( 15, -35-ar, 3.6, 0, Math.PI*2); ctx.fill();
-
-  // 胴（作業着）＋安全ベスト
-  ctx.fillStyle = '#39485a';
-  rr(-13, -32, 26, 30, 6); ctx.fill();
-  ctx.fillStyle = '#ffb020';
-  rr(-13, -27, 26, 12, 3); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,.55)';
-  ctx.fillRect(-13, -23.5, 26, 2.6);
-  ctx.fillStyle = 'rgba(0,0,0,.18)';
-  ctx.fillRect(-1.4, -32, 2.8, 30);
-
-  // 首・後頭部
-  ctx.fillStyle = '#d9a97f';
-  rr(-4.5, -37, 9, 6, 2); ctx.fill();
-  ctx.fillStyle = '#e3b98d';
-  ctx.beginPath(); ctx.arc(0, -44, 9.4, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#2b3543';
-  ctx.beginPath(); ctx.arc(0, -45.4, 9.4, Math.PI*0.02, Math.PI*0.98, true); ctx.fill();
-  // キャップ
-  ctx.fillStyle = '#1f6fb2';
-  ctx.beginPath(); ctx.arc(0, -47, 9.8, Math.PI, 0); ctx.fill();
-  ctx.fillRect(-9.8, -47, 19.6, 2.6);
-  ctx.fillStyle = '#17527f';
-  rr(-11.5, -47.4, 23, 3, 1.5); ctx.fill();
+  ctx.fillStyle = '#39485a'; rr(-13, -32, 26, 30, 6); ctx.fill();
+  ctx.fillStyle = '#ffb020'; rr(-13, -27, 26, 12, 3); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(-13, -23.5, 26, 2.6);
+  ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(-1.4, -32, 2.8, 30);
+  ctx.fillStyle = '#d9a97f'; rr(-4.5, -37, 9, 6, 2); ctx.fill();
+  ctx.fillStyle = '#e3b98d'; ctx.beginPath(); ctx.arc(0, -44, 9.4, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#2b3543'; ctx.beginPath(); ctx.arc(0, -45.4, 9.4, Math.PI*0.02, Math.PI*0.98, true); ctx.fill();
+  ctx.fillStyle = '#1f6fb2'; ctx.beginPath(); ctx.arc(0, -47, 9.8, Math.PI, 0); ctx.fill(); ctx.fillRect(-9.8, -47, 19.6, 2.6);
+  ctx.fillStyle = '#17527f'; rr(-11.5, -47.4, 23, 3, 1.5); ctx.fill();
   ctx.restore();
 }
-
-/** 天窓から差す光の筋と、その中で光る埃 */
 function drawAtmosphere(){
-  const boost = S.running ? .5 : 1;
-  const {W, H} = LAY;
-  const skew = H * .42;
-  ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
+  const boost = S.running ? .5 : 1; const {W, H} = LAY; const skew = H * .42;
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
   LAY.shafts.forEach((sx, i) => {
-    const x = sx + Math.sin(S.t*.17 + i*1.7)*12;
-    const w = 84 + i*20;
+    const x = sx + Math.sin(S.t*.17 + i*1.7)*12, w = 84 + i*20;
     const g = ctx.createLinearGradient(x, 0, x + skew, H);
-    g.addColorStop(0,   `rgba(255,214,152,${.085*boost})`);
-    g.addColorStop(.45, `rgba(255,200,136,${.042*boost})`);
-    g.addColorStop(1,   'rgba(255,190,120,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.moveTo(x, 0); ctx.lineTo(x+w, 0);
-    ctx.lineTo(x+w+skew, H); ctx.lineTo(x+skew, H);
-    ctx.closePath(); ctx.fill();
+    g.addColorStop(0, `rgba(255,214,152,${.085*boost})`); g.addColorStop(.45, `rgba(255,200,136,${.042*boost})`); g.addColorStop(1, 'rgba(255,190,120,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x+w, 0); ctx.lineTo(x+w+skew, H); ctx.lineTo(x+skew, H); ctx.closePath(); ctx.fill();
   });
-  for(const m of S.motes){
-    const y = m.y + Math.sin(S.t*.7 + m.ph)*m.amp;
-    ctx.fillStyle = `rgba(255,228,186,${m.a*boost})`;
-    ctx.beginPath(); ctx.arc(m.x, y, m.r, 0, Math.PI*2); ctx.fill();
-  }
+  for(const m of S.motes){ const y = m.y + Math.sin(S.t*.7 + m.ph)*m.amp; ctx.fillStyle = `rgba(255,228,186,${m.a*boost})`; ctx.beginPath(); ctx.arc(m.x, y, m.r, 0, Math.PI*2); ctx.fill(); }
   ctx.restore();
 }
-
 function drawVignette(){
   const {W,H} = LAY;
   const g = ctx.createRadialGradient(W/2, H*.46, H*.22, W/2, H*.5, H*.98);
-  g.addColorStop(0, 'rgba(0,0,0,0)');
-  g.addColorStop(.65,'rgba(0,0,0,.16)');
-  g.addColorStop(1,  'rgba(0,0,0,.52)');
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(.65,'rgba(0,0,0,.16)'); g.addColorStop(1,'rgba(0,0,0,.52)');
   ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
 }
-
 function drawChute(){
-  const {chuteW, boardH, floorY} = LAY;
-  const a = S.chuteAlert;
+  const {chuteW, floorY} = LAY, boardB = LAY.boardBottom; const a = S.chuteAlert;
   ctx.save();
   const g = ctx.createLinearGradient(0,0,chuteW,0);
   g.addColorStop(0,'rgba(4,7,10,.96)'); g.addColorStop(1,'rgba(6,10,14,.5)');
-  ctx.fillStyle = g; ctx.fillRect(0, boardH, chuteW, floorY-boardH);
-  hazardStripes(0, boardH, 13, floorY-boardH, .55 + a*.4);
-
+  ctx.fillStyle = g; ctx.fillRect(0, boardB, chuteW, floorY-boardB);
+  hazardStripes(0, boardB, 13, floorY-boardB, .55 + a*.4);
   ctx.strokeStyle = a>0 ? `rgba(255,90,77,${.35+a*.5})` : 'rgba(120,140,160,.3)';
   ctx.lineWidth = 2; ctx.setLineDash([9,9]); ctx.lineDashOffset = -S.t*22;
-  ctx.beginPath(); ctx.moveTo(chuteW-6, boardH); ctx.lineTo(chuteW-6, floorY); ctx.stroke();
-  ctx.setLineDash([]);
-
+  ctx.beginPath(); ctx.moveTo(chuteW-6, boardB); ctx.lineTo(chuteW-6, floorY); ctx.stroke(); ctx.setLineDash([]);
   const sort3 = isSwipeJob();
   for(let l=0;l<LANES;l++){
     const cy = LAY.laneY[l], al = S.laneAlert[l];
-    ctx.save();
-    ctx.translate(chuteW/2+4, cy);
-    const hh = sort3 ? 33 : 21;
+    ctx.save(); ctx.translate(chuteW/2+4, cy);
+    const hh = (sort3 ? 33 : 21)*Math.min(1.1,LAY.u);
     ctx.fillStyle = al>0 ? `rgba(255,90,77,${.2+al*.5})` : 'rgba(255,255,255,.045)';
     rr(-19,-hh,38,hh*2,6); ctx.fill();
-    ctx.strokeStyle = al>0 ? `rgba(255,120,110,${.5+al*.5})` : 'rgba(255,176,32,.5)';
-    ctx.lineWidth = 1.4; rr(-19,-hh,38,hh*2,6); ctx.stroke();
-    ctx.fillStyle = al>0 ? '#ff9a90' : '#ffb020';
-    ctx.textAlign = 'center';
-    if(sort3){
-      // このレーンで回収する資源
-      ctx.font = '800 13px Consolas, monospace';
-      ctx.fillText(String(l+1), 0, -21);
-      ctx.save(); ctx.translate(0, 6); ctx.globalAlpha = .95;
-      drawWasteIcon(l, 40, 0);
-      ctx.restore();
-    }else{
-      ctx.font = '800 21px Consolas, monospace';
-      ctx.fillText(String(l+1), 0, 1);
-    }
+    ctx.strokeStyle = al>0 ? `rgba(255,120,110,${.5+al*.5})` : 'rgba(255,176,32,.5)'; ctx.lineWidth = 1.4; rr(-19,-hh,38,hh*2,6); ctx.stroke();
+    ctx.fillStyle = al>0 ? '#ff9a90' : '#ffb020'; ctx.textAlign = 'center';
+    if(sort3){ ctx.font = '800 13px Consolas, monospace'; ctx.fillText(String(l+1), 0, -21);
+      ctx.save(); ctx.translate(0, 6); ctx.globalAlpha = .95; drawWasteIcon(l, 40, 0); ctx.restore();
+    }else{ ctx.font = '800 21px Consolas, monospace'; ctx.fillText(String(l+1), 0, 1); }
     ctx.restore();
   }
   ctx.restore();
 }
-
 function drawBoard(){
-  const {W, boardH, portrait, cardH, progW} = LAY;
-  // 担当が3つになったらカードを詰める
-  const cardW = S.codes.length >= 3 ? (portrait ? 116 : 140) : LAY.cardW;
+  const {W, boardH, portrait, cardH} = LAY;
+  const cardW = S.codes.length >= 3 ? (portrait ? F(102) : F(122)) : LAY.cardW;
+  ctx.save(); ctx.translate(0, LAY.top);
   ctx.fillStyle = '#151d25'; ctx.fillRect(0,0,W,boardH);
   const g = ctx.createLinearGradient(0,0,0,boardH);
   g.addColorStop(0,'rgba(255,255,255,.05)'); g.addColorStop(1,'rgba(0,0,0,.28)');
   ctx.fillStyle = g; ctx.fillRect(0,0,W,boardH);
   ctx.fillStyle = '#0a0e12'; ctx.fillRect(0,boardH-4,W,4);
   ctx.fillStyle = 'rgba(255,176,32,.32)'; ctx.fillRect(0,boardH-4,W,1.5);
-
-  const labelY = portrait ? 18 : 26;
-  const cardY  = portrait ? 30 : 14;
-  let x = portrait ? 16 : 122;
-
-  ctx.textAlign = 'left';
-  ctx.fillStyle = '#5d7085'; ctx.font = '700 10px "Yu Gothic UI", sans-serif';
-  ctx.fillText(JOB ? JOB.short : '本日の担当', portrait ? 16 : 22, labelY);
-  if(JOB && !portrait){
-    ctx.fillStyle = '#33414f'; ctx.font = '700 9px Consolas, monospace';
-    ctx.fillText(hhmm(LIFE.clock), 22, labelY + 16);
-  }
-
-  // 選果ラインは番号ではなく「傷み品を弾く」
-  if(JOB && JOB.rule === 'rotten'){
-    const cw = 176, ch = cardH, cy = cardY;
-    ctx.save();
-    ctx.translate(x + cw/2, cy + ch/2);
-    ctx.fillStyle = 'rgba(0,0,0,.45)'; rr(-cw/2+3,-ch/2+5,cw,ch,3); ctx.fill();
-    ctx.fillStyle = '#f6f3e8'; rr(-cw/2,-ch/2,cw,ch,3); ctx.fill();
-    ctx.strokeStyle = 'rgba(190,60,45,.45)'; ctx.lineWidth = 1.2;
-    rr(-cw/2+5,-ch/2+5,cw-10,ch-10,2); ctx.stroke();
-    // 傷んだりんごのアイコン
-    ctx.save();
-    ctx.translate(-cw/2+30, 1);
-    ctx.fillStyle = '#c4433a'; ctx.beginPath(); ctx.arc(0,0,15,0,Math.PI*2); ctx.fill();
-    ctx.strokeStyle = '#3f6b2f'; ctx.lineWidth = 2.4;
-    ctx.beginPath(); ctx.moveTo(0,-14); ctx.lineTo(3,-20); ctx.stroke();
-    ctx.fillStyle = 'rgba(58,32,16,.9)';
-    ctx.beginPath(); ctx.arc(-4,2,5,0,Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(5,-3,3.4,0,Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(3,7,2.6,0,Math.PI*2); ctx.fill();
-    ctx.restore();
-    ctx.fillStyle = '#15181d'; ctx.textAlign = 'left';
-    ctx.font = '800 21px "Yu Gothic UI", sans-serif';
-    ctx.fillText('傷み品を弾く', -cw/2+52, -4);
-    ctx.fillStyle = '#7a7263'; ctx.font = '700 11px "Yu Gothic UI", sans-serif';
-    ctx.fillText('黒い斑点が大きいものだけ', -cw/2+52, 17);
-    ctx.restore();
-  }
-
-  // 分別ラインは「レーン＝資源」の対応表を出す
+  const labelY = F(15), cardY = Math.round(boardH*0.16);
+  let x = F(96);
+  ctx.textAlign = 'left'; ctx.fillStyle = '#5d7085'; ctx.font = '700 10px "Yu Gothic UI", sans-serif';
+  ctx.fillText(JOB ? JOB.short : '本日の担当', F(14), labelY);
+  if(JOB && !portrait){ ctx.fillStyle = '#33414f'; ctx.font = '700 9px Consolas, monospace'; ctx.fillText(hhmm(LIFE.clock), F(14), labelY + 14); }
   if(JOB && JOB.rule === 'swipe3'){
-    const names = ['カン','ビン','ペット'];
-    const cw = 232, ch = cardH, cy = cardY;
-    ctx.save();
-    ctx.translate(x + cw/2, cy + ch/2);
+    const names = ['カン','ビン','ペット']; const cw = F(210), ch = cardH, cy = cardY;
+    ctx.save(); ctx.translate(x + cw/2, cy + ch/2);
     ctx.fillStyle = 'rgba(0,0,0,.45)'; rr(-cw/2+3,-ch/2+5,cw,ch,3); ctx.fill();
     ctx.fillStyle = '#f6f3e8'; rr(-cw/2,-ch/2,cw,ch,3); ctx.fill();
     ctx.strokeStyle = 'rgba(0,0,0,.2)'; ctx.lineWidth = 1; rr(-cw/2,-ch/2,cw,ch,3); ctx.stroke();
-    for(let i=0;i<3;i++){
-      const px = -cw/2 + 38 + i*72;
-      ctx.save(); ctx.translate(px, -2); drawWasteIcon(i, 38, 0); ctx.restore();
+    for(let i=0;i<3;i++){ const px = -cw/2 + F(34) + i*F(64);
+      ctx.save(); ctx.translate(px, -2); drawWasteIcon(i, F(34), 0); ctx.restore();
       ctx.fillStyle = '#15181d'; ctx.font = '800 12px "Yu Gothic UI", sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText(`${i+1}　${names[i]}`, px, ch/2-10);
-      if(i < 2){ ctx.fillStyle = 'rgba(0,0,0,.12)'; ctx.fillRect(px+36, -ch/2+6, 1, ch-12); }
+      ctx.fillText(`${i+1} ${names[i]}`, px, ch/2-9);
+      if(i < 2){ ctx.fillStyle = 'rgba(0,0,0,.12)'; ctx.fillRect(px+F(32), -ch/2+6, 1, ch-12); }
     }
     ctx.restore();
   }
-
   const pulse = S.boardPulse > 0 ? (Math.sin(S.t*22)*.5+.5) * Math.min(1, S.boardPulse*1.6) : 0;
   for(const c of (JOB && JOB.rule !== 'number' ? [] : S.codes)){
-    ctx.save();
-    ctx.translate(x + cardW/2, cardY + cardH/2);
-    ctx.rotate(-.012);
+    ctx.save(); ctx.translate(x + cardW/2, cardY + cardH/2); ctx.rotate(-.012);
     ctx.fillStyle = 'rgba(0,0,0,.45)'; rr(-cardW/2+3, -cardH/2+5, cardW, cardH, 3); ctx.fill();
-    ctx.fillStyle = `rgb(${lerp(246,255,pulse)|0},${lerp(243,214,pulse)|0},${lerp(232,120,pulse)|0})`;
-    rr(-cardW/2, -cardH/2, cardW, cardH, 3); ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,.2)'; ctx.lineWidth = 1;
-    rr(-cardW/2, -cardH/2, cardW, cardH, 3); ctx.stroke();
-    ctx.strokeStyle = 'rgba(190,60,45,.45)'; ctx.lineWidth = 1.2;
-    rr(-cardW/2+5, -cardH/2+5, cardW-10, cardH-10, 2); ctx.stroke();
-
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#15181d'; ctx.font = `800 ${portrait?34:38}px Consolas, "SF Mono", monospace`;
-    ctx.fillText(c, -9, -3);
-    ctx.fillStyle = '#7a7263'; ctx.font = '700 11px "Yu Gothic UI", sans-serif';
-    ctx.fillText(S.zones[c] || '', -9, 19);
-    ctx.fillStyle = 'rgba(190,60,45,.85)'; ctx.fillRect(cardW/2-24, -cardH/2+5, 4, cardH-10);
+    ctx.fillStyle = `rgb(${lerp(246,255,pulse)|0},${lerp(243,214,pulse)|0},${lerp(232,120,pulse)|0})`; rr(-cardW/2, -cardH/2, cardW, cardH, 3); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.2)'; ctx.lineWidth = 1; rr(-cardW/2, -cardH/2, cardW, cardH, 3); ctx.stroke();
+    ctx.strokeStyle = 'rgba(190,60,45,.45)'; ctx.lineWidth = 1.2; rr(-cardW/2+5, -cardH/2+5, cardW-10, cardH-10, 2); ctx.stroke();
+    ctx.textAlign = 'center'; ctx.fillStyle = '#15181d'; ctx.font = `800 ${F(portrait?30:34)}px Consolas, monospace`; ctx.fillText(c, -F(9), -3);
+    ctx.fillStyle = '#7a7263'; ctx.font = '700 11px "Yu Gothic UI", sans-serif'; ctx.fillText(S.zones[c] || '', -F(9), F(17));
+    ctx.fillStyle = 'rgba(190,60,45,.85)'; ctx.fillRect(cardW/2-F(22), -cardH/2+5, 4, cardH-10);
     ctx.fillStyle = '#9a3a2c'; ctx.font = '700 10px "Yu Gothic UI", sans-serif';
-    ctx.save(); ctx.translate(cardW/2-11, 0);
-    ctx.fillText('担', 0, -11); ctx.fillText('当', 0, 3); ctx.fillText('分', 0, 17);
+    ctx.save(); ctx.translate(cardW/2-F(11), 0); ctx.fillText('担', 0, -11); ctx.fillText('当', 0, 3); ctx.fillText('分', 0, 17); ctx.restore();
     ctx.restore();
-    ctx.restore();
-    x += cardW + 12;
+    x += cardW + F(11);
   }
-
-  // レベル進捗
-  const bx = W - (portrait?16:24) - progW, by = portrait ? 62 : 40;
-  ctx.textAlign = 'left';
-  ctx.fillStyle = '#5d7085'; ctx.font = '700 10px "Yu Gothic UI", sans-serif';
-  ctx.fillText('次のレベルまで', bx, by-16);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = '#8ea0b2'; ctx.font = '700 11px Consolas, monospace';
-  ctx.fillText(`${S.clearedInLevel} / ${CFG.clearPerLevel}`, bx+progW, by-16);
-  ctx.fillStyle = 'rgba(255,255,255,.08)'; rr(bx,by,progW,9,4.5); ctx.fill();
-  const p = S.clearedInLevel / CFG.clearPerLevel;
-  if(p > 0){
-    const pg = ctx.createLinearGradient(bx,0,bx+progW,0);
-    pg.addColorStop(0,'#ff9c3c'); pg.addColorStop(1,'#ffd479');
-    ctx.fillStyle = pg; rr(bx,by,Math.max(9,progW*p),9,4.5); ctx.fill();
-  }
-  ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1;
-  for(let i=1;i<CFG.clearPerLevel;i++){
-    const gx = bx + progW*(i/CFG.clearPerLevel);
-    ctx.beginPath(); ctx.moveTo(gx,by+1.5); ctx.lineTo(gx,by+7.5); ctx.stroke();
-  }
+  ctx.restore();
 }
-
 function drawFloor(){
-  const {W, H, floorY, portrait} = LAY;
+  const {W, H, floorY} = LAY;
   ctx.fillStyle = '#0e141a'; ctx.fillRect(0, floorY, W, H-floorY);
   const g = ctx.createLinearGradient(0,floorY,0,floorY+34);
   g.addColorStop(0,'rgba(255,255,255,.055)'); g.addColorStop(1,'rgba(255,255,255,0)');
   ctx.fillStyle = g; ctx.fillRect(0, floorY, W, 34);
-  // 安全ライン
   ctx.strokeStyle = 'rgba(255,176,32,.16)'; ctx.lineWidth = 3; ctx.setLineDash([16,12]);
-  ctx.beginPath(); ctx.moveTo(0, floorY+9); ctx.lineTo(W, floorY+9); ctx.stroke();
-  ctx.setLineDash([]);
-
+  ctx.beginPath(); ctx.moveTo(0, floorY+9); ctx.lineTo(W, floorY+9); ctx.stroke(); ctx.setLineDash([]);
   drawCage();
-
-  const bx = portrait ? 128 : 152;
-  ctx.textAlign = 'left';
-  ctx.fillStyle = '#4f6072'; ctx.font = '700 10px "Yu Gothic UI", sans-serif';
-  ctx.fillText('処理数', bx, floorY+38);
-  ctx.fillStyle = '#e8eef4'; ctx.font = '800 26px Consolas, monospace';
-  const numTxt = String(S.cleared);
-  ctx.fillText(numTxt, bx, floorY+64);
-  const nw = ctx.measureText(numTxt).width;
-  ctx.fillStyle = '#4f6072'; ctx.font = '700 11px "Yu Gothic UI", sans-serif';
-  ctx.fillText('個', bx + nw + 6, floorY+68);
-
-  // ライン速度メーター
-  const mx = portrait ? 226 : 300, mw = portrait ? 150 : 210, my = floorY+52;
-  ctx.fillStyle = '#4f6072'; ctx.font = '700 10px "Yu Gothic UI", sans-serif';
-  ctx.fillText('ライン速度', mx, floorY+38);
-  ctx.fillStyle = 'rgba(255,255,255,.07)'; rr(mx,my,mw,7,3.5); ctx.fill();
-  const sp = clamp((speedNow()/LAY.k - CFG.baseSpeed) / (CFG.maxSpeed - CFG.baseSpeed), 0, 1);
-  const sg = ctx.createLinearGradient(mx,0,mx+mw,0);
-  sg.addColorStop(0,'#3fd18b'); sg.addColorStop(.55,'#ffb020'); sg.addColorStop(1,'#ff5a4d');
-  ctx.fillStyle = sg; rr(mx,my,Math.max(7,mw*(.1+sp*.9)),7,3.5); ctx.fill();
-
-  if(!portrait){
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#31404e'; ctx.font = '700 10.5px "Yu Gothic UI", sans-serif';
-    ctx.fillText(isSwipeJob() ? 'つかんで上下にスワイプ／ドラッグで正しいレーンへ'
-                              : '十字キーで移動　　スペース／画面タップで取る', W-24, floorY+64);
-  }
 }
-
 function drawCage(){
   const pop = S.cagePop;
-  ctx.save();
-  ctx.translate(LAY.cage.x, LAY.cage.y + pop*3);
+  ctx.save(); ctx.translate(LAY.cage.x, LAY.cage.y + pop*3); ctx.scale(LAY.u, LAY.u);
   const w = 96, h = 62;
-  ctx.fillStyle = 'rgba(0,0,0,.45)';
-  ctx.beginPath(); ctx.ellipse(0, h/2+8, w*.5, 7, 0, 0, Math.PI*2); ctx.fill();
-  const stack = S.running ? Math.min(5, S.cleared) : 5;   // タイトルではカゴ車を満載に見せる
-  for(let i=0;i<stack;i++){
-    ctx.fillStyle = i%2 ? '#a9793f' : '#c08a4f';
-    ctx.fillRect(-w/2+9 + (i%2)*6, h/2-14 - i*9, w-26, 9);
-  }
-  ctx.strokeStyle = pop>0 ? `rgba(255,200,120,${.6+pop*.4})` : 'rgba(190,205,220,.5)';
-  ctx.lineWidth = 2.4; rr(-w/2,-h/2,w,h,3); ctx.stroke();
+  ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.beginPath(); ctx.ellipse(0, h/2+8, w*.5, 7, 0, 0, Math.PI*2); ctx.fill();
+  const stack = S.running ? Math.min(5, S.cleared) : 5;
+  for(let i=0;i<stack;i++){ ctx.fillStyle = i%2 ? '#a9793f' : '#c08a4f'; ctx.fillRect(-w/2+9 + (i%2)*6, h/2-14 - i*9, w-26, 9); }
+  ctx.strokeStyle = pop>0 ? `rgba(255,200,120,${.6+pop*.4})` : 'rgba(190,205,220,.5)'; ctx.lineWidth = 2.4; rr(-w/2,-h/2,w,h,3); ctx.stroke();
   ctx.lineWidth = 1.1; ctx.strokeStyle = pop>0 ? 'rgba(255,200,120,.45)' : 'rgba(190,205,220,.26)';
   for(let i=1;i<5;i++){ const x = -w/2 + w*i/5; ctx.beginPath(); ctx.moveTo(x,-h/2); ctx.lineTo(x,h/2); ctx.stroke(); }
   for(let i=1;i<3;i++){ const y = -h/2 + h*i/3; ctx.beginPath(); ctx.moveTo(-w/2,y); ctx.lineTo(w/2,y); ctx.stroke(); }
-  ctx.fillStyle = '#2a333d';
-  ctx.beginPath(); ctx.arc(-w/2+12, h/2+5, 5, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(w/2-12, h/2+5, 5, 0, Math.PI*2); ctx.fill();
-  // 行先札
-  const label = !JOB || JOB.rule === 'number' ? (S.codes.join('/') || '---')
-              : JOB.rule === 'rotten' ? '傷み品' : '分別';
+  ctx.fillStyle = '#2a333d'; ctx.beginPath(); ctx.arc(-w/2+12, h/2+5, 5, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(w/2-12, h/2+5, 5, 0, Math.PI*2); ctx.fill();
+  const label = !JOB || JOB.rule === 'number' ? (S.codes.join('/') || '---') : '分別';
   const lf = label.length >= 11 ? 9 : label.length >= 7 ? 10.5 : 12;
   const lw = label.length >= 11 ? 86 : label.length >= 7 ? 66 : 52;
   ctx.fillStyle = '#f6f3e8'; rr(-lw/2, -h/2-18, lw, 16, 2); ctx.fill();
-  ctx.fillStyle = '#15181d'; ctx.font = `800 ${lf}px Consolas, monospace`; ctx.textAlign = 'center';
-  ctx.fillText(label, 0, -h/2-9.5);
+  ctx.fillStyle = '#15181d'; ctx.font = `800 ${lf}px Consolas, monospace`; ctx.textAlign = 'center'; ctx.fillText(label, 0, -h/2-9.5);
   ctx.restore();
 }
-
-/** 青果の木箱（傷み具合が判別対象） */
-function drawCrate(b){
-  const w = b.w, h = b.h;
-  // 木箱
-  ctx.fillStyle = 'rgba(0,0,0,.42)';
-  ctx.beginPath(); ctx.ellipse(5, h/2+7, w*.45, 8, 0, 0, Math.PI*2); ctx.fill();
-  const g = ctx.createLinearGradient(-w/2,-h/2,w/2,h/2);
-  g.addColorStop(0,'#c79a5f'); g.addColorStop(1,'#8f6534');
-  ctx.fillStyle = g; rr(-w/2,-h/2,w,h,3); ctx.fill();
-  ctx.strokeStyle = 'rgba(70,44,18,.75)'; ctx.lineWidth = 1.6; rr(-w/2,-h/2,w,h,3); ctx.stroke();
-  // 板の隙間
-  ctx.fillStyle = 'rgba(50,32,14,.35)';
-  ctx.fillRect(-w/2+3, -h/2+3, w-6, 3);
-  ctx.fillRect(-w/2+3,  h/2-9, w-6, 3);
-
-  // 果物3つ
-  const r = Math.min(h*.27, 17);
-  for(let i=0;i<3;i++){
-    const cx = (i-1) * (w*.27), cy = 2 + ((b.id+i)%2 ? -1.5 : 1.5);
-    const fg = ctx.createRadialGradient(cx-r*.32, cy-r*.36, r*.15, cx, cy, r);
-    const dull = b.rot*.5;
-    fg.addColorStop(0, `rgb(${240-dull*70|0},${120-dull*40|0},${88-dull*30|0})`);
-    fg.addColorStop(1, `rgb(${176-dull*70|0},${48-dull*20|0},${40-dull*14|0})`);
-    ctx.fillStyle = fg;
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
-    // ヘタ
-    ctx.strokeStyle = '#3f6b2f'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(cx, cy-r+1); ctx.lineTo(cx+2, cy-r-4); ctx.stroke();
-    // 傷み（黒い斑点）
-    if(b.rot > .04){
-      const n = Math.max(1, Math.round(b.rot*5));
-      for(let k=0;k<n;k++){
-        const a = ((b.id*37 + i*53 + k*97) % 360) * Math.PI/180;
-        const d = r*.52 * (((b.id*13 + k*29) % 100)/100);
-        const sr = r * (.10 + b.rot*.30) * (.7 + ((k*17)%10)/20);
-        ctx.fillStyle = `rgba(58,32,16,${.55 + b.rot*.4})`;
-        ctx.beginPath(); ctx.arc(cx+Math.cos(a)*d, cy+Math.sin(a)*d, sr, 0, Math.PI*2); ctx.fill();
-      }
-    }
-    // ハイライト
-    ctx.fillStyle = 'rgba(255,255,255,.4)';
-    ctx.beginPath(); ctx.ellipse(cx-r*.34, cy-r*.4, r*.2, r*.13, -.6, 0, Math.PI*2); ctx.fill();
-  }
-  // 手前の板
-  ctx.fillStyle = 'rgba(199,154,95,.95)';
-  ctx.fillRect(-w/2+2, h/2-13, w-4, 11);
-  ctx.strokeStyle = 'rgba(70,44,18,.6)'; ctx.lineWidth = 1.2;
-  ctx.strokeRect(-w/2+2.5, h/2-12.5, w-5, 10);
-}
-
-/** 資源物のアイコン（0=カン 1=ビン 2=ペット 3=一般ごみ）。scaleは高さの基準 */
 function drawWasteIcon(type, s, tone=0){
-  ctx.save();
-  ctx.scale(s/60, s/60);        // 60px基準で設計
-  if(type === 0){               // アルミ缶
+  ctx.save(); ctx.scale(s/60, s/60);
+  if(type === 0){
     const g = ctx.createLinearGradient(-13,0,13,0);
     g.addColorStop(0,'#8b96a3'); g.addColorStop(.35,'#e8eef4'); g.addColorStop(.7,'#aab6c2'); g.addColorStop(1,'#7d8894');
     ctx.fillStyle = g; rr(-13,-24,26,48,4); ctx.fill();
@@ -1504,103 +1349,47 @@ function drawWasteIcon(type, s, tone=0){
     ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(-13,-6,26,2.5);
     ctx.fillStyle = '#c3ccd6'; rr(-13,-26,26,5,2); ctx.fill();
     ctx.strokeStyle = 'rgba(40,50,60,.5)'; ctx.lineWidth = 1.4; rr(-13,-24,26,48,4); ctx.stroke();
-  }else if(type === 1){         // ガラス瓶
+  }else if(type === 1){
     const g = ctx.createLinearGradient(-11,0,11,0);
     const base = tone ? ['#3f6b3a','#6fae63','#2f5a2c'] : ['#5c3a1c','#a97440','#4a2e14'];
     g.addColorStop(0,base[0]); g.addColorStop(.4,base[1]); g.addColorStop(1,base[2]);
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.moveTo(-5,-27); ctx.lineTo(5,-27); ctx.lineTo(5,-13);
-    ctx.quadraticCurveTo(12,-8,12,2); ctx.lineTo(12,22);
-    ctx.quadraticCurveTo(12,26,8,26); ctx.lineTo(-8,26);
-    ctx.quadraticCurveTo(-12,26,-12,22); ctx.lineTo(-12,2);
+    ctx.fillStyle = g; ctx.beginPath();
+    ctx.moveTo(-5,-27); ctx.lineTo(5,-27); ctx.lineTo(5,-13); ctx.quadraticCurveTo(12,-8,12,2); ctx.lineTo(12,22);
+    ctx.quadraticCurveTo(12,26,8,26); ctx.lineTo(-8,26); ctx.quadraticCurveTo(-12,26,-12,22); ctx.lineTo(-12,2);
     ctx.quadraticCurveTo(-12,-8,-5,-13); ctx.closePath(); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,.28)'; ctx.fillRect(-8,-6,3,26);
-    ctx.fillStyle = '#efe7d6'; ctx.fillRect(-11,4,22,12);   // ラベル
+    ctx.fillStyle = '#efe7d6'; ctx.fillRect(-11,4,22,12);
     ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(-8,8,16,1.6); ctx.fillRect(-8,12,11,1.6);
     ctx.fillStyle = tone ? '#2f5a2c' : '#3a2410'; rr(-6,-29,12,4,1.5); ctx.fill();
-  }else if(type === 2){         // ペットボトル
-    ctx.fillStyle = 'rgba(226,242,250,.85)';
-    ctx.beginPath();
-    ctx.moveTo(-5,-25); ctx.lineTo(5,-25); ctx.lineTo(5,-16);
-    ctx.quadraticCurveTo(11,-11,11,-3); ctx.lineTo(11,21);
-    ctx.quadraticCurveTo(11,26,6,26); ctx.lineTo(-6,26);
-    ctx.quadraticCurveTo(-11,26,-11,21); ctx.lineTo(-11,-3);
+  }else if(type === 2){
+    ctx.fillStyle = 'rgba(226,242,250,.85)'; ctx.beginPath();
+    ctx.moveTo(-5,-25); ctx.lineTo(5,-25); ctx.lineTo(5,-16); ctx.quadraticCurveTo(11,-11,11,-3); ctx.lineTo(11,21);
+    ctx.quadraticCurveTo(11,26,6,26); ctx.lineTo(-6,26); ctx.quadraticCurveTo(-11,26,-11,21); ctx.lineTo(-11,-3);
     ctx.quadraticCurveTo(-11,-11,-5,-16); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = 'rgba(120,170,195,.75)'; ctx.lineWidth = 1.3; ctx.stroke();
-    ctx.strokeStyle = 'rgba(150,195,215,.8)'; ctx.lineWidth = 1.6;   // リブ
+    ctx.strokeStyle = 'rgba(150,195,215,.8)'; ctx.lineWidth = 1.6;
     for(let y=-2;y<=14;y+=6){ ctx.beginPath(); ctx.moveTo(-10,y); ctx.lineTo(10,y); ctx.stroke(); }
     ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillRect(-7,-10,3,30);
-    ctx.fillStyle = tone ? '#2f7fbd' : '#2fa3a0'; rr(-6,-30,12,6,2); ctx.fill();  // キャップ
-    ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(-9,2,18,9);              // ラベル
+    ctx.fillStyle = tone ? '#2f7fbd' : '#2fa3a0'; rr(-6,-30,12,6,2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(-9,2,18,9);
     ctx.fillStyle = 'rgba(60,140,170,.6)'; ctx.fillRect(-7,5,14,1.5);
-  }else{                        // 一般ごみ（黒い袋）
-    const g = ctx.createRadialGradient(-6,-8,3,0,0,30);
-    g.addColorStop(0,'#4c5058'); g.addColorStop(1,'#22262c');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.moveTo(0,-26); ctx.quadraticCurveTo(-8,-20,-14,-6);
-    ctx.quadraticCurveTo(-20,10,-14,20); ctx.quadraticCurveTo(-6,28,0,27);
-    ctx.quadraticCurveTo(8,28,14,20); ctx.quadraticCurveTo(20,10,14,-6);
-    ctx.quadraticCurveTo(8,-20,0,-26); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,.14)'; ctx.lineWidth = 1.6;
-    ctx.beginPath(); ctx.moveTo(-6,-4); ctx.quadraticCurveTo(0,6,-2,18); ctx.stroke();
-    ctx.fillStyle = '#3a3f47';                     // 縛り口
-    ctx.beginPath(); ctx.moveTo(-7,-24); ctx.lineTo(0,-32); ctx.lineTo(7,-24); ctx.closePath(); ctx.fill();
   }
   ctx.restore();
 }
-
 function drawBox(b, scale=1, rot=0, alpha=1){
   const w = b.w, h = b.h;
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.translate(b.x, b.y);
-  ctx.rotate(rot);
-  ctx.scale(scale, scale);
+  ctx.save(); ctx.globalAlpha = alpha; ctx.translate(b.x, b.y); ctx.rotate(rot); ctx.scale(scale, scale);
   if(b.wrongFx > 0) ctx.translate(Math.sin(b.wrongFx*42)*5, 0);
-
   if(b.kind === 'waste'){
-    const held = b.held ? 1 : 0;
-    if(held){
-      ctx.scale(1.12, 1.12);
-      ctx.shadowColor = 'rgba(255,206,90,.9)'; ctx.shadowBlur = 18;
-    }
-    ctx.fillStyle = 'rgba(0,0,0,.42)';
-    ctx.beginPath(); ctx.ellipse(3, h/2+4, w*.30, 7, 0, 0, Math.PI*2); ctx.fill();
-    drawWasteIcon(b.type, h*1.02, b.tone);
-    ctx.shadowBlur = 0;
-    if(b.hitFx > 0){
-      ctx.fillStyle = `rgba(255,255,255,${b.hitFx*.3})`;
-      ctx.beginPath(); ctx.arc(0,0,h*.46,0,Math.PI*2); ctx.fill();
-    }
-    if(b.wrongFx > 0){
-      ctx.strokeStyle = `rgba(255,90,80,${b.wrongFx})`; ctx.lineWidth = 5; ctx.lineCap='round';
-      const r2 = h*.3;
-      ctx.beginPath(); ctx.moveTo(-r2,-r2); ctx.lineTo(r2,r2); ctx.moveTo(r2,-r2); ctx.lineTo(-r2,r2); ctx.stroke();
-      ctx.lineCap='butt';
-    }
-    ctx.restore();
-    return;
+    if(b.held){ ctx.scale(1.12, 1.12); ctx.shadowColor = 'rgba(255,206,90,.9)'; ctx.shadowBlur = 18; }
+    ctx.fillStyle = 'rgba(0,0,0,.42)'; ctx.beginPath(); ctx.ellipse(3, h/2+4, w*.30, 7, 0, 0, Math.PI*2); ctx.fill();
+    drawWasteIcon(b.type, h*1.02, b.tone); ctx.shadowBlur = 0;
+    if(b.hitFx > 0){ ctx.fillStyle = `rgba(255,255,255,${b.hitFx*.3})`; ctx.beginPath(); ctx.arc(0,0,h*.46,0,Math.PI*2); ctx.fill(); }
+    if(b.wrongFx > 0){ ctx.strokeStyle = `rgba(255,90,80,${b.wrongFx})`; ctx.lineWidth = 5; ctx.lineCap='round'; const r2 = h*.3;
+      ctx.beginPath(); ctx.moveTo(-r2,-r2); ctx.lineTo(r2,r2); ctx.moveTo(r2,-r2); ctx.lineTo(-r2,r2); ctx.stroke(); ctx.lineCap='butt'; }
+    ctx.restore(); return;
   }
-
-  if(b.kind === 'crate'){
-    drawCrate(b);
-    if(b.hitFx > 0){ ctx.fillStyle = `rgba(255,255,255,${b.hitFx*.32})`; rr(-w/2,-h/2,w,h,3); ctx.fill(); }
-    if(b.wrongFx > 0){
-      ctx.fillStyle = `rgba(255,60,50,${b.wrongFx*.38})`; rr(-w/2,-h/2,w,h,3); ctx.fill();
-      ctx.strokeStyle = `rgba(255,90,80,${b.wrongFx})`; ctx.lineWidth = 5; ctx.lineCap='round';
-      const rr2 = Math.min(w,h)*.28;
-      ctx.beginPath(); ctx.moveTo(-rr2,-rr2); ctx.lineTo(rr2,rr2); ctx.moveTo(rr2,-rr2); ctx.lineTo(-rr2,rr2); ctx.stroke();
-      ctx.lineCap='butt';
-    }
-    ctx.restore();
-    return;
-  }
-
-  ctx.fillStyle = 'rgba(0,0,0,.42)';
-  ctx.beginPath(); ctx.ellipse(5, h/2+7, w*.45, 8, 0, 0, Math.PI*2); ctx.fill();
-
+  ctx.fillStyle = 'rgba(0,0,0,.42)'; ctx.beginPath(); ctx.ellipse(5, h/2+7, w*.45, 8, 0, 0, Math.PI*2); ctx.fill();
   const g = ctx.createLinearGradient(-w/2,-h/2,w/2,h/2);
   g.addColorStop(0,'#dcab72'); g.addColorStop(.5,'#c48d52'); g.addColorStop(1,'#9d6e3a');
   ctx.fillStyle = g; rr(-w/2,-h/2,w,h,4); ctx.fill();
@@ -1608,445 +1397,501 @@ function drawBox(b, scale=1, rot=0, alpha=1){
   for(let i=-h/2+7;i<h/2;i+=7){ ctx.beginPath(); ctx.moveTo(-w/2+2,i); ctx.lineTo(w/2-2,i); ctx.stroke(); }
   ctx.strokeStyle = 'rgba(84,54,24,.7)'; ctx.lineWidth = 1.6; rr(-w/2,-h/2,w,h,4); ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,.11)'; ctx.fillRect(-w/2+2,-h/2+2,w-4,10);
-  ctx.strokeStyle = 'rgba(80,50,20,.45)'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(-w/2+2,-h/2+12); ctx.lineTo(w/2-2,-h/2+12); ctx.stroke();
-
   const tx = -w/2 + w*b.tape;
   ctx.fillStyle = 'rgba(228,209,171,.5)'; ctx.fillRect(tx-8,-h/2,16,h);
-  ctx.strokeStyle = 'rgba(255,255,255,.13)';
-  ctx.beginPath(); ctx.moveTo(tx-8,-h/2); ctx.lineTo(tx-8,h/2); ctx.moveTo(tx+8,-h/2); ctx.lineTo(tx+8,h/2); ctx.stroke();
-
-  // 速達：右上のコーナーリボン
+  ctx.strokeStyle = 'rgba(255,255,255,.13)'; ctx.beginPath(); ctx.moveTo(tx-8,-h/2); ctx.lineTo(tx-8,h/2); ctx.moveTo(tx+8,-h/2); ctx.lineTo(tx+8,h/2); ctx.stroke();
   if(b.express){
-    ctx.save();
-    rr(-w/2,-h/2,w,h,4); ctx.clip();
-    ctx.translate(w/2-19, -h/2+19);
-    ctx.rotate(-Math.PI/4);
-    ctx.fillStyle = '#d6302a';
-    ctx.fillRect(-62, -9.5, 124, 19);
+    ctx.save(); rr(-w/2,-h/2,w,h,4); ctx.clip(); ctx.translate(w/2-19, -h/2+19); ctx.rotate(-Math.PI/4);
+    ctx.fillStyle = '#d6302a'; ctx.fillRect(-62, -9.5, 124, 19);
     ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.fillRect(-62, -9.5, 124, 2);
-    ctx.fillStyle = '#fff'; ctx.font = '800 11px "Yu Gothic UI", sans-serif';
-    ctx.textAlign = 'center'; ctx.fillText('速達', 0, 1);
-    ctx.restore();
+    ctx.fillStyle = '#fff'; ctx.font = '800 11px "Yu Gothic UI", sans-serif'; ctx.textAlign = 'center'; ctx.fillText('速達', 0, 1); ctx.restore();
   }
-  // 重量物：見落とさないよう下辺に注意帯を巻く
   if(b.large){
-    ctx.save();
-    rr(-w/2,-h/2,w,h,4); ctx.clip();
-    const by = h/2-15;
+    ctx.save(); rr(-w/2,-h/2,w,h,4); ctx.clip(); const by = h/2-15;
     ctx.fillStyle = 'rgba(28,24,18,.85)'; ctx.fillRect(-w/2, by, w, 15);
     ctx.strokeStyle = 'rgba(255,176,32,.9)'; ctx.lineWidth = 6;
-    for(let i=-15;i<w+15;i+=17){
-      ctx.beginPath(); ctx.moveTo(-w/2+i, by+16); ctx.lineTo(-w/2+i+16, by); ctx.stroke();
-    }
+    for(let i=-15;i<w+15;i+=17){ ctx.beginPath(); ctx.moveTo(-w/2+i, by+16); ctx.lineTo(-w/2+i+16, by); ctx.stroke(); }
     ctx.restore();
-    ctx.save();
-    ctx.translate(-w/2+18, -h/2+22);
-    ctx.strokeStyle = '#5d3a18'; ctx.lineWidth = 1.8;
+    ctx.save(); ctx.translate(-w/2+18, -h/2+22); ctx.strokeStyle = '#5d3a18'; ctx.lineWidth = 1.8;
     ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(10,8); ctx.lineTo(-10,8); ctx.closePath(); ctx.stroke();
-    ctx.fillStyle = '#5d3a18'; ctx.font = '700 10px "Yu Gothic UI", sans-serif'; ctx.textAlign='center';
-    ctx.fillText('重', 0, 3);
-    ctx.restore();
+    ctx.fillStyle = '#5d3a18'; ctx.font = '700 10px "Yu Gothic UI", sans-serif'; ctx.textAlign='center'; ctx.fillText('重', 0, 3); ctx.restore();
   }
-
-  // 取扱注意（精密機器）
-  if(b.fragile){
-    ctx.save();
-    ctx.strokeStyle = 'rgba(206,52,44,.75)'; ctx.lineWidth = 2;
-    rr(-w/2+4,-h/2+4,w-8,h-8,3); ctx.stroke();
-    ctx.translate(-w/2+14, h/2-17);
-    ctx.strokeStyle = '#c1352c'; ctx.lineWidth = 1.7; ctx.lineCap='round';
-    ctx.beginPath();
-    ctx.moveTo(-4,-8); ctx.lineTo(4,-8); ctx.lineTo(2,-2); ctx.lineTo(2,4);
-    ctx.moveTo(-3,5); ctx.lineTo(5,5);
-    ctx.stroke(); ctx.lineCap='butt';
-    ctx.restore();
-  }
-
-  // 伝票
-  ctx.save();
-  ctx.rotate(b.tilt);
+  ctx.save(); ctx.rotate(b.tilt);
   const sw = Math.min(w-20, LAY.slipW), sh = LAY.slipH;
   ctx.fillStyle = 'rgba(0,0,0,.28)'; rr(-sw/2+2,-sh/2+3,sw,sh,2); ctx.fill();
   ctx.fillStyle = '#f7f4ea'; rr(-sw/2,-sh/2,sw,sh,2); ctx.fill();
   ctx.strokeStyle = 'rgba(0,0,0,.2)'; ctx.lineWidth = 1; rr(-sw/2,-sh/2,sw,sh,2); ctx.stroke();
-  ctx.fillStyle = '#1d2027';
-  let bx = -sw/2+5;
-  for(let i=0; i<16 && bx < sw/2-6; i++){
-    const bw = 1 + (b.id*7 + i*13) % 3;
-    ctx.fillRect(bx, -sh/2+4, bw, 7);
-    bx += bw + 2;
-  }
-  ctx.fillStyle = '#14171c'; ctx.textAlign = 'center';
-  ctx.font = `800 ${LAY.slipFont}px Consolas, "SF Mono", monospace`;
-  ctx.fillText(b.code, 0, 6);
-  ctx.strokeStyle = 'rgba(0,0,0,.18)'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(-sw/2+5, sh/2-5); ctx.lineTo(sw/2-5, sh/2-5); ctx.stroke();
+  ctx.fillStyle = '#1d2027'; let bx = -sw/2+5;
+  for(let i=0; i<16 && bx < sw/2-6; i++){ const bw = 1 + (b.id*7 + i*13) % 3; ctx.fillRect(bx, -sh/2+4, bw, 7); bx += bw + 2; }
+  ctx.fillStyle = '#14171c'; ctx.textAlign = 'center'; ctx.font = `800 ${LAY.slipFont}px Consolas, monospace`; ctx.fillText(b.code, 0, 6);
+  ctx.strokeStyle = 'rgba(0,0,0,.18)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-sw/2+5, sh/2-5); ctx.lineTo(sw/2-5, sh/2-5); ctx.stroke();
   ctx.restore();
-
-  if(b.large && b.hits === 1){
-    ctx.strokeStyle = `rgba(255,176,32,${.55+Math.sin(S.t*14)*.35})`; ctx.lineWidth = 3;
-    rr(-w/2-4,-h/2-4,w+8,h+8,7); ctx.stroke();
-  }
+  if(b.large && b.hits === 1){ ctx.strokeStyle = `rgba(255,176,32,${.55+Math.sin(S.t*14)*.35})`; ctx.lineWidth = 3; rr(-w/2-4,-h/2-4,w+8,h+8,7); ctx.stroke(); }
   if(b.hitFx > 0){ ctx.fillStyle = `rgba(255,255,255,${b.hitFx*.32})`; rr(-w/2,-h/2,w,h,4); ctx.fill(); }
   if(b.wrongFx > 0){
     ctx.fillStyle = `rgba(255,60,50,${b.wrongFx*.38})`; rr(-w/2,-h/2,w,h,4); ctx.fill();
-    ctx.strokeStyle = `rgba(255,90,80,${b.wrongFx})`; ctx.lineWidth = 5; ctx.lineCap='round';
-    const r = Math.min(w,h)*.28;
-    ctx.beginPath(); ctx.moveTo(-r,-r); ctx.lineTo(r,r); ctx.moveTo(r,-r); ctx.lineTo(-r,r); ctx.stroke();
-    ctx.lineCap='butt';
+    ctx.strokeStyle = `rgba(255,90,80,${b.wrongFx})`; ctx.lineWidth = 5; ctx.lineCap='round'; const r = Math.min(w,h)*.28;
+    ctx.beginPath(); ctx.moveTo(-r,-r); ctx.lineTo(r,r); ctx.moveTo(r,-r); ctx.lineTo(-r,r); ctx.stroke(); ctx.lineCap='butt';
   }
   ctx.restore();
 }
-
 function drawEffects(){
-  for(const r of S.rings){
-    const p = r.t/r.life, a = 1-p;
-    ctx.strokeStyle = `rgba(${r.color},${a*.8})`; ctx.lineWidth = 2.5*a + .5;
-    ctx.beginPath(); ctx.arc(r.x, r.y, 8 + p*38, 0, Math.PI*2); ctx.stroke();
-  }
-  for(const p of S.fx){
-    const a = 1 - p.t/p.life;
-    ctx.fillStyle = `rgba(${p.color},${a})`;
-    ctx.beginPath(); ctx.arc(p.x, p.y, p.r*a + .6, 0, Math.PI*2); ctx.fill();
-  }
+  for(const r of S.rings){ const p = r.t/r.life, a = 1-p;
+    ctx.strokeStyle = `rgba(${r.color},${a*.8})`; ctx.lineWidth = 2.5*a + .5; ctx.beginPath(); ctx.arc(r.x, r.y, 8 + p*38, 0, Math.PI*2); ctx.stroke(); }
+  for(const p of S.fx){ const a = 1 - p.t/p.life; ctx.fillStyle = `rgba(${p.color},${a})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.r*a + .6, 0, Math.PI*2); ctx.fill(); }
   ctx.textAlign = 'center';
-  for(const t of S.texts){
-    const a = 1 - Math.pow(t.t/t.life, 2);
+  for(const t of S.texts){ const a = 1 - Math.pow(t.t/t.life, 2);
     ctx.font = `800 ${t.size*(1+(1-a)*.12)}px "Yu Gothic UI", Consolas, sans-serif`;
-    ctx.lineWidth = 5; ctx.strokeStyle = `rgba(0,0,0,${a*.65})`;
-    ctx.strokeText(t.text, t.x, t.y);
-    ctx.fillStyle = hexA(t.color, a);
-    ctx.fillText(t.text, t.x, t.y);
-  }
+    ctx.lineWidth = 5; ctx.strokeStyle = `rgba(0,0,0,${a*.65})`; ctx.strokeText(t.text, t.x, t.y);
+    ctx.fillStyle = hexA(t.color, a); ctx.fillText(t.text, t.x, t.y); }
 }
-
 function drawBanner(){
   if(!S.banner) return;
-  const {W, boardH, floorY} = LAY;
-  const p = S.banner.t/1.9;
-  const a = p < .1 ? p/.1 : (p > .84 ? (1-p)/.16 : 1);
-  const slide = (1-Math.min(1,p/.1))*40;
-  ctx.save();
-  ctx.globalAlpha = a;
-  const cy = (boardH + floorY)/2;
+  const {W, floorY} = LAY; const p = S.banner.t/1.9;
+  const a = p < .1 ? p/.1 : (p > .84 ? (1-p)/.16 : 1); const slide = (1-Math.min(1,p/.1))*40;
+  ctx.save(); ctx.globalAlpha = a; const cy = (LAY.boardBottom + floorY)/2;
   ctx.fillStyle = 'rgba(8,12,17,.93)'; ctx.fillRect(0, cy-64, W, 128);
   ctx.fillStyle = S.banner.color; ctx.fillRect(0, cy-64, W, 3); ctx.fillRect(0, cy+61, W, 3);
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#fff3dd'; ctx.font = `800 ${LAY.portrait?36:46}px "Yu Gothic UI", sans-serif`;
-  ctx.fillText(S.banner.text, W/2 + slide, cy-12);
-  ctx.fillStyle = '#8ea0b2'; ctx.font = '700 15px "Yu Gothic UI", sans-serif';
-  ctx.fillText(S.banner.sub, W/2 - slide, cy+30);
+  ctx.textAlign = 'center'; ctx.fillStyle = '#fff3dd'; ctx.font = `800 ${LAY.portrait?36:46}px "Yu Gothic UI", sans-serif`; ctx.fillText(S.banner.text, W/2 + slide, cy-12);
+  ctx.fillStyle = '#8ea0b2'; ctx.font = '700 15px "Yu Gothic UI", sans-serif'; ctx.fillText(S.banner.sub, W/2 - slide, cy+30);
+  ctx.restore();
+}
+// ============================================================
+//  レジ打ちシーン描画
+// ============================================================
+const COIN_STYLE = {
+  500:['#d8b15a','#b8923f','500'], 100:['#c9ccd2','#9aa0a8','100'], 50:['#cfd2d8','#a4aab2','50'],
+  10:['#c98a54','#a06a38','10'], 5:['#cdb85e','#a8923f','5'], 1:['#dfe3e8','#b2b8c0','1'],
+};
+const BILL_STYLE = { 10000:['#b98f5a','#8a6838'], 5000:['#a884b8','#7c5f8c'], 1000:['#6f9ac4','#4f7396'] };
+
+function drawCoin(cx,cy,r,val){
+  const st = COIN_STYLE[val];
+  ctx.save(); ctx.translate(cx,cy);
+  ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(1.5, r*0.5, r*0.94, r*0.3, 0,0,Math.PI*2); ctx.fill();
+  const g = ctx.createRadialGradient(-r*0.3,-r*0.3,r*0.2,0,0,r);
+  g.addColorStop(0, st[0]); g.addColorStop(1, st[1]);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = Math.max(1,r*0.07); ctx.beginPath(); ctx.arc(0,0,r*0.82,0,Math.PI*2); ctx.stroke();
+  if(val===5 || val===50){ ctx.fillStyle = st[1]; ctx.beginPath(); ctx.arc(0,0,r*0.24,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.arc(0,0,r*0.16,0,Math.PI*2); ctx.fill();
+  }else{ ctx.fillStyle = 'rgba(30,24,12,.72)'; ctx.font = `800 ${Math.round(r*0.9)}px Consolas, monospace`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(st[2], 0, 1); }
+  ctx.restore();
+}
+function drawBill(cx,cy,w,h,val){
+  const st = BILL_STYLE[val];
+  ctx.save(); ctx.translate(cx,cy);
+  ctx.fillStyle = 'rgba(0,0,0,.3)'; rr(-w/2+2,-h/2+3,w,h,4); ctx.fill();
+  const g = ctx.createLinearGradient(-w/2,0,w/2,0); g.addColorStop(0, st[0]); g.addColorStop(.5, '#efe7d8'); g.addColorStop(1, st[0]);
+  ctx.fillStyle = g; rr(-w/2,-h/2,w,h,4); ctx.fill();
+  ctx.strokeStyle = st[1]; ctx.lineWidth = 1.4; rr(-w/2+3,-h/2+3,w-6,h-6,3); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.beginPath(); ctx.arc(w/2-h*0.42, 0, h*0.28, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = st[1]; ctx.font = `800 ${Math.round(h*0.44)}px Consolas, monospace`; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(val>=10000?'一万':val>=5000?'五千':'千', -w*0.14, 0);
+  ctx.restore();
+}
+function drawMoneyIcon(val, cx, cy, s){
+  if(denomKind(val)==='bill') drawBill(cx, cy, s*1.7, s*0.92, val);
+  else drawCoin(cx, cy, s*0.5, val);
+}
+function drawCustomer(c, x, y, s){
+  const angry = c.pat < .3, worry = c.pat < .55;
+  ctx.save(); ctx.translate(x,y); ctx.scale(s,s);
+  // 体
+  ctx.fillStyle = angry ? '#7d5b52' : '#5a6b7c'; rr(-22,6,44,42,10); ctx.fill();
+  // 首・顔
+  ctx.fillStyle = '#e7bd93'; rr(-6,-6,12,12,3); ctx.fill();
+  ctx.fillStyle = '#efc79c'; ctx.beginPath(); ctx.arc(0,-16,16,0,Math.PI*2); ctx.fill();
+  // 髪
+  ctx.fillStyle = ['#2b2620','#3a2d22','#20242b','#4a3b2c'][c.face%4];
+  ctx.beginPath(); ctx.arc(0,-18,16,Math.PI*1.02,Math.PI*1.98,false); ctx.fill(); ctx.fillRect(-16,-19,32,4);
+  // 目
+  ctx.fillStyle = '#20242b';
+  if(angry){ ctx.save(); ctx.lineWidth=2; ctx.strokeStyle='#20242b'; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(-9,-19); ctx.lineTo(-3,-17); ctx.moveTo(9,-19); ctx.lineTo(3,-17); ctx.stroke(); ctx.restore();
+    ctx.beginPath(); ctx.arc(-6,-15,1.8,0,Math.PI*2); ctx.arc(6,-15,1.8,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#20242b'; ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(0,-6,3,Math.PI,0); ctx.stroke();
+  }else{
+    ctx.beginPath(); ctx.arc(-6,-16,1.9,0,Math.PI*2); ctx.arc(6,-16,1.9,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#20242b'; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(0,-9,worry?2:3,worry?0:0.15*Math.PI,Math.PI*0.85); ctx.stroke();
+  }
+  // 感情の吹き出し
+  if(angry){ ctx.fillStyle='#ff5a4d'; ctx.font='800 13px "Yu Gothic UI"'; ctx.textAlign='center'; ctx.fillText('！！', 24, -26); }
+  else if(worry){ ctx.fillStyle='#ffb020'; ctx.font='800 12px "Yu Gothic UI"'; ctx.textAlign='center'; ctx.fillText('…？', 24, -26); }
   ctx.restore();
 }
 
+function drawRegDisplay(x, y, w, h, c){
+  ctx.save();
+  ctx.fillStyle = '#0c1a16'; rr(x,y,w,h,8); ctx.fill();
+  ctx.strokeStyle = 'rgba(90,214,196,.4)'; ctx.lineWidth = 1.4; rr(x+1,y+1,w-2,h-2,7); ctx.stroke();
+  ctx.textBaseline='middle';
+  const rows = [['会計', c?('¥'+c.total.toLocaleString()):'-'], ['お預かり', c?('¥'+c.paid.toLocaleString()):'-']];
+  const rh = h*0.28;
+  rows.forEach((r,i)=>{
+    const ry = y + h*0.12 + i*rh;
+    ctx.textAlign='left'; ctx.fillStyle='#5b8f84'; ctx.font=`700 ${F(11)}px "Yu Gothic UI"`; ctx.fillText(r[0], x+F(12), ry+rh/2);
+    ctx.textAlign='right'; ctx.fillStyle='#7fe9d4'; ctx.font=`800 ${F(15)}px Consolas, monospace`; ctx.fillText(r[1], x+w-F(12), ry+rh/2);
+  });
+  // おつり（大）
+  const cy = y + h*0.74;
+  ctx.textAlign='left'; ctx.fillStyle='#5b8f84'; ctx.font=`700 ${F(12)}px "Yu Gothic UI"`; ctx.fillText('おつり', x+F(12), cy);
+  ctx.textAlign='right'; ctx.fillStyle='#eafff9'; ctx.font=`900 ${F(26)}px Consolas, monospace`; ctx.fillText(c?('¥'+c.change.toLocaleString()):'-', x+w-F(12), cy);
+  ctx.restore();
+}
+
+function drawRegister(){
+  const {W,H,u} = LAY; REG.hit.length = 0; const c = REG.cust;
+  // 店内背景
+  let g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#e9ede7'); g.addColorStop(.5,'#dfe4dd'); g.addColorStop(1,'#c9d0c8');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  // 天井ライト
+  ctx.fillStyle = 'rgba(255,255,255,.6)';
+  for(let i=0;i<4;i++){ const lx = W*(0.15+i*0.24); ctx.fillRect(lx-F(30), 0, F(60), F(8)); }
+  // 背面の棚
+  const shelfY = H*0.06, shelfH = H*0.2;
+  ctx.fillStyle = '#b7bfb4'; ctx.fillRect(0, shelfY, W, shelfH);
+  for(let r=0;r<3;r++){ const sy = shelfY + F(10) + r*(shelfH/3);
+    ctx.fillStyle = '#98a196'; ctx.fillRect(0, sy+shelfH/3-F(6), W, F(5));
+    for(let px=F(14); px<W-F(20); px+=F(30)){
+      const col = ['#c9483c','#5f8ac2','#e0b23a','#6fae63','#d98cb0','#e6e0d4'][(r*7+px)%6|0];
+      ctx.fillStyle = col; ctx.fillRect(px, sy, F(20), shelfH/3-F(10));
+      ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.fillRect(px, sy, F(20), F(4));
+    }
+  }
+  // カウンター
+  const counterTop = H*0.30;
+  g = ctx.createLinearGradient(0,counterTop,0,counterTop+H*0.1);
+  g.addColorStop(0,'#8f755a'); g.addColorStop(1,'#6f5942');
+  ctx.fillStyle = g; ctx.fillRect(0, counterTop, W, H*0.1);
+  ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(0, counterTop, W, F(4));
+  ctx.fillStyle = '#5a4735'; ctx.fillRect(0, counterTop+H*0.1-F(4), W, F(4));
+  // 客
+  if(c) drawCustomer(c, W*0.74, counterTop*0.66, u*(1.5 + 0.4*(1-c.pat)) * (0.9+0.1*c.ready));
+  else { ctx.fillStyle='#8698ab'; ctx.textAlign='center'; ctx.font=`700 ${F(15)}px "Yu Gothic UI"`; ctx.fillText('…次のお客さんを待っています', W*0.5, counterTop*0.5); }
+
+  // レジ表示パネル（HUDの下）
+  const panelTop = LAY.top + F(4);
+  const pW = Math.min(W*0.52, F(290)), pH = Math.min(counterTop - panelTop - F(16), F(150));
+  drawRegDisplay(F(12), panelTop, pW, pH, c);
+
+  // 忍耐バー
+  if(c){
+    const bw = pW, bx = F(12), by = panelTop + pH + F(6);
+    ctx.fillStyle = 'rgba(0,0,0,.12)'; rr(bx,by,bw,F(9),F(4)); ctx.fill();
+    const pc = c.pat<.3?'#ff5a4d':c.pat<.55?'#ffb020':'#3fd18b';
+    ctx.fillStyle = pc; rr(bx,by,Math.max(F(9),bw*clamp(c.pat,0,1)),F(9),F(4)); ctx.fill();
+  }
+
+  // ---- トレイ（渡すお釣り） ----
+  const trayTop = counterTop + H*0.1 + F(8), trayH = H*0.16;
+  ctx.fillStyle = 'rgba(20,26,33,.9)'; rr(F(10), trayTop, W-F(20), trayH, F(10)); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth=1; rr(F(10), trayTop, W-F(20), trayH, F(10)); ctx.stroke();
+  const sum = traySum(), target = c?c.change:0;
+  ctx.textAlign='left'; ctx.fillStyle='#8698ab'; ctx.font=`700 ${F(11)}px "Yu Gothic UI"`; ctx.textBaseline='middle';
+  ctx.fillText('お釣りトレイ（タップで戻す）', F(22), trayTop+F(14));
+  ctx.textAlign='right'; const okAmt = sum===target;
+  ctx.fillStyle = okAmt?'#3fd18b':(sum>target?'#ff9a90':'#ffd479'); ctx.font=`800 ${F(18)}px Consolas, monospace`;
+  ctx.fillText(`¥${sum.toLocaleString()} / ¥${target.toLocaleString()}`, W-F(22), trayTop+F(15));
+  // トレイのチップ
+  let tx = F(24); const chipY = trayTop + trayH*0.62, chipR = F(15);
+  for(const d of REG.denoms){
+    const n = REG.tray[d]||0; if(!n) continue;
+    const cw = chipR*2 + F(26);
+    drawMoneyIcon(d, tx+chipR, chipY, chipR*1.6);
+    ctx.textAlign='left'; ctx.fillStyle='#eef3f8'; ctx.font=`800 ${F(13)}px Consolas, monospace`; ctx.textBaseline='middle';
+    ctx.fillText('×'+n, tx+chipR+F(12), chipY);
+    REG.hit.push({type:'tray', val:d, x:tx-F(4), y:chipY-chipR-F(4), w:cw, h:chipR*2+F(8)});
+    tx += cw + F(8);
+    if(tx > W-F(60)) break;
+  }
+
+  // ---- ドロワー（金種） ----
+  const drawTop = trayTop + trayH + F(10);
+  const btnH = H*0.11, drawBottom = H - btnH - F(14);
+  const gridTop = drawTop, gridH = drawBottom - drawTop;
+  const cols = 4, rows = 2, gapx = F(9), gapy = F(9);
+  const cellW = (W - F(20) - gapx*(cols-1))/cols;
+  const cellH = (gridH - gapy*(rows-1))/rows;
+  REG.denoms.forEach((d,i)=>{
+    const cx = F(10) + (i%cols)*(cellW+gapx), cy = gridTop + Math.floor(i/cols)*(cellH+gapy);
+    const gr = ctx.createLinearGradient(0,cy,0,cy+cellH);
+    gr.addColorStop(0,'#232c37'); gr.addColorStop(1,'#161d26');
+    ctx.fillStyle = gr; rr(cx,cy,cellW,cellH,F(11)); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth=1.2; rr(cx,cy,cellW,cellH,F(11)); ctx.stroke();
+    drawMoneyIcon(d, cx+cellW*0.5, cy+cellH*0.37, Math.min(cellH*0.46, cellW*0.42));
+    ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#eef3f8'; ctx.font=`800 ${F(15)}px Consolas, monospace`;
+    ctx.fillText('¥'+d.toLocaleString(), cx+cellW*0.5, cy+cellH*0.8);
+    REG.hit.push({type:'den', val:d, x:cx, y:cy, w:cellW, h:cellH});
+  });
+
+  // ---- ボタン ----
+  const by = H - btnH - F(6);
+  const clrW = W*0.3, okW = W - F(20) - clrW - F(10);
+  // クリア
+  ctx.fillStyle = 'rgba(40,50,62,.95)'; rr(F(10), by, clrW, btnH, F(13)); ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.1)'; ctx.lineWidth=1.2; rr(F(10), by, clrW, btnH, F(13)); ctx.stroke();
+  ctx.fillStyle='#c3ccd6'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font=`800 ${F(16)}px "Yu Gothic UI"`; ctx.fillText('クリア', F(10)+clrW/2, by+btnH/2);
+  REG.hit.push({type:'clr', x:F(10), y:by, w:clrW, h:btnH});
+  // OK
+  const okX = F(10)+clrW+F(10);
+  const okReady = c && sum===target;
+  const og = ctx.createLinearGradient(0,by,0,by+btnH);
+  og.addColorStop(0, okReady?'#ffe08a':'#ffcf6a'); og.addColorStop(1, okReady?'#ffb020':'#e6a326');
+  ctx.fillStyle = og; rr(okX, by, okW, btnH, F(13)); ctx.fill();
+  ctx.fillStyle='#241804'; ctx.font=`900 ${F(19)}px "Yu Gothic UI"`; ctx.fillText('お釣りを渡す (OK)', okX+okW/2, by+btnH/2);
+  REG.hit.push({type:'ok', x:okX, y:by, w:okW, h:btnH});
+}
 // ============================================================
 //  じゅんの部屋（ドット絵）
 // ============================================================
 const RW = 320, RH = 200;
 let roomCv = null;
 function buildRoom(){
-  roomCv = document.createElement('canvas');
-  roomCv.width = RW; roomCv.height = RH;
+  roomCv = document.createElement('canvas'); roomCv.width = RW; roomCv.height = RH;
   const r = roomCv.getContext('2d');
   const P = (x,y,w,h,c) => { r.fillStyle = c; r.fillRect(x|0, y|0, w|0, h|0); };
-  const PC = (cx,cy,rad,c) => {           // ドット絵の円
-    r.fillStyle = c;
-    for(let y=-rad;y<=rad;y++){
-      const w = Math.floor(Math.sqrt(rad*rad - y*y));
-      r.fillRect(cx-w, cy+y, w*2+1, 1);
-    }
-  };
-
-  // ---- 壁と天井 ----
-  P(0,0,RW,RH,'#3b3542');
-  P(0,0,RW,14,'#2a2530');                                  // 天井
-  P(0,14,RW,126,'#6a6274');                                // 壁
-  for(let x=0;x<RW;x+=8) P(x,14,1,126,'rgba(255,255,255,.025)');   // 壁紙の縦筋
-  P(0,124,RW,4,'#5b5466');                                 // 汚れ
-  P(0,132,RW,8,'#4a4453');                                 // 巾木
-  P(0,140,RW,2,'#332e3b');
-
-  // ---- 床（フローリング） ----
+  const PC = (cx,cy,rad,c) => { r.fillStyle = c; for(let y=-rad;y<=rad;y++){ const w = Math.floor(Math.sqrt(rad*rad - y*y)); r.fillRect(cx-w, cy+y, w*2+1, 1); } };
+  P(0,0,RW,RH,'#3b3542'); P(0,0,RW,14,'#2a2530'); P(0,14,RW,126,'#6a6274');
+  for(let x=0;x<RW;x+=8) P(x,14,1,126,'rgba(255,255,255,.025)');
+  P(0,124,RW,4,'#5b5466'); P(0,132,RW,8,'#4a4453'); P(0,140,RW,2,'#332e3b');
   P(0,142,RW,58,'#7a5738');
   for(let y=142;y<RH;y+=7) P(0,y,RW,1,'#664628');
-  for(let y=142;y<RH;y+=7){
-    for(let x=(y/7|0)%2*22; x<RW; x+=44) P(x,y,1,7,'#5e401f');
-  }
+  for(let y=142;y<RH;y+=7){ for(let x=(y/7|0)%2*22; x<RW; x+=44) P(x,y,1,7,'#5e401f'); }
   P(0,142,RW,3,'rgba(255,214,150,.10)');
-
-  // ---- 窓 ----
-  P(20,26,78,68,'#332e3b');
-  P(23,29,72,62,'#151d2b');
-  // 夜景
-  for(let i=0;i<46;i++){
-    const x = 24 + (i*37)%68, y = 30 + (i*23)%56;
-    const c = i%7===0 ? '#ffd88a' : i%5===0 ? '#9ad0ff' : 'rgba(255,240,200,.5)';
-    P(x,y,1,1,c);
-  }
-  P(23,72,72,19,'#1b2536');                                 // 遠くのビル
-  P(30,64,10,27,'#222c3e'); P(46,68,8,23,'#1e2839'); P(64,60,12,31,'#232d40');
+  P(20,26,78,68,'#332e3b'); P(23,29,72,62,'#151d2b');
+  for(let i=0;i<46;i++){ const x = 24 + (i*37)%68, y = 30 + (i*23)%56; const c = i%7===0 ? '#ffd88a' : i%5===0 ? '#9ad0ff' : 'rgba(255,240,200,.5)'; P(x,y,1,1,c); }
+  P(23,72,72,19,'#1b2536'); P(30,64,10,27,'#222c3e'); P(46,68,8,23,'#1e2839'); P(64,60,12,31,'#232d40');
   P(33,70,2,2,'#ffd88a'); P(50,74,2,2,'#ffe4a0'); P(68,66,2,2,'#ffd88a'); P(70,78,2,2,'#9ad0ff');
-  P(58,29,2,62,'#332e3b'); P(23,58,72,2,'#332e3b');         // 桟
-  // カーテン
+  P(58,29,2,62,'#332e3b'); P(23,58,72,2,'#332e3b');
   P(14,24,12,74,'#8a7a9e'); P(92,24,12,74,'#8a7a9e');
-  for(let y=24;y<98;y+=3){ P(17,y,2,2,'#77688b'); P(95,y,2,2,'#77688b'); }
-  P(12,22,96,4,'#4a4453');
-
-  // ---- 裸電球 ----
-  P(160,14,1,20,'#2a2530');
-  PC(160,38,5,'#ffe9b0'); PC(160,37,3,'#fff6d8');
-  r.globalAlpha = .12; PC(160,40,26,'#ffd88a'); r.globalAlpha = .07; PC(160,42,44,'#ffd88a'); r.globalAlpha = 1;
-
-  // ---- 壁のカレンダー ----
+  for(let y=24;y<98;y+=3){ P(17,y,2,2,'#77688b'); P(95,y,2,2,'#77688b'); } P(12,22,96,4,'#4a4453');
+  P(160,14,1,20,'#2a2530'); PC(160,38,5,'#ffe9b0'); PC(160,37,3,'#fff6d8');
+  r.globalAlpha=.12; PC(160,40,26,'#ffd88a'); r.globalAlpha=.07; PC(160,42,44,'#ffd88a'); r.globalAlpha=1;
   P(190,26,38,34,'#efe9de'); P(190,26,38,7,'#c9483c');
   for(let y=36;y<58;y+=5) for(let x=193;x<225;x+=5) P(x,y,3,3,'#c8c0b4');
   P(208,46,3,3,'#c9483c'); P(213,46,3,3,'#c9483c'); P(218,46,3,3,'#c9483c');
-  // シフト表
-  P(236,24,46,30,'#e6e0d4');
-  for(let y=29;y<50;y+=4) P(239,y,34,1,'#9a9287');
-  P(239,29,20,1,'#c9483c');
-  P(232,22,4,4,'#8d8494');
-
-  // ---- 壁時計 ----
-  PC(300,36,11,'#d8d2c6'); PC(300,36,9,'#f3efe6');
-  P(300,29,1,8,'#33303a'); P(300,36,6,1,'#c9483c'); P(299,35,3,3,'#33303a');
-
-  // ---- ハンガーラック（壁側・TVの上） ----
+  P(236,24,46,30,'#e6e0d4'); for(let y=29;y<50;y+=4) P(239,y,34,1,'#9a9287'); P(239,29,20,1,'#c9483c'); P(232,22,4,4,'#8d8494');
+  PC(300,36,11,'#d8d2c6'); PC(300,36,9,'#f3efe6'); P(300,29,1,8,'#33303a'); P(300,36,6,1,'#c9483c'); P(299,35,3,3,'#33303a');
   P(110,44,2,52,'#8d8494'); P(150,44,2,52,'#8d8494'); P(110,44,42,2,'#a49bab');
-  P(116,46,16,26,'#cfd6de'); P(116,46,16,4,'#b8c0ca');     // シャツ
-  P(134,46,14,30,'#d8c9a0'); P(134,46,14,4,'#c2b48c');     // 作業着
-  P(122,72,4,10,'#cfd6de');
-
-  // ---- 段ボール積み（床に立てる） ----
-  const box = (x,y,w,h) => {
-    P(x,y,w,h,'#b8874f'); P(x,y,w,2,'#c99a5f'); P(x,y+h-2,w,2,'#9c6f3c');
-    P(x+w/2-2,y,4,h,'#cdaa7a'); P(x+4,y+4,w-8,1,'#8f6634');
-    P(x+w-14,y+h-10,10,7,'#f2ece0'); P(x+w-12,y+h-8,6,1,'#7a7268');
-  };
-  box(270,100,42,24); box(266,124,48,26); box(262,150,54,28);
-  P(262,178,54,2,'rgba(0,0,0,.3)');
-
-  // ---- 布団（万年床） ----
-  P(152,152,104,42,'rgba(0,0,0,.25)');
-  P(154,150,100,40,'#ded3bd');                              // 敷布団
-  P(160,158,88,30,'#7fa0c4');                               // 掛け布団
-  for(let x=162;x<246;x+=9) P(x,160,2,26,'#6e8fb3');
-  P(162,152,30,12,'#f0e8da');                               // 枕
-  P(164,154,26,2,'#dcd2c2');
-
-  // ---- ちゃぶ台 ----
-  P(18,156,84,6,'#8b6a45'); P(18,156,84,2,'#a07c53');
-  P(22,162,4,18,'#6f5335'); P(94,162,4,18,'#6f5335');
-  // カップ麺
-  P(30,144,14,12,'#e9e2d2'); P(30,147,14,3,'#c9483c'); P(29,143,16,2,'#f4efe3');
-  // 缶
-  P(54,146,7,10,'#b6bec8'); P(54,149,7,2,'#c9483c');
-  P(68,148,9,8,'#8d8494');                                  // リモコン
-  P(68,149,3,1,'#c9483c');
-  P(82,146,12,10,'#e4e0d6'); P(84,148,8,2,'#c9483c');       // コンビニ袋
-
-  // ---- カラーボックス＋テレビ ----
+  P(116,46,16,26,'#cfd6de'); P(116,46,16,4,'#b8c0ca'); P(134,46,14,30,'#d8c9a0'); P(134,46,14,4,'#c2b48c'); P(122,72,4,10,'#cfd6de');
+  const box = (x,y,w,h) => { P(x,y,w,h,'#b8874f'); P(x,y,w,2,'#c99a5f'); P(x,y+h-2,w,2,'#9c6f3c'); P(x+w/2-2,y,4,h,'#cdaa7a'); P(x+4,y+4,w-8,1,'#8f6634'); P(x+w-14,y+h-10,10,7,'#f2ece0'); P(x+w-12,y+h-8,6,1,'#7a7268'); };
+  box(270,100,42,24); box(266,124,48,26); box(262,150,54,28); P(262,178,54,2,'rgba(0,0,0,.3)');
+  P(152,152,104,42,'rgba(0,0,0,.25)'); P(154,150,100,40,'#ded3bd'); P(160,158,88,30,'#7fa0c4');
+  for(let x=162;x<246;x+=9) P(x,160,2,26,'#6e8fb3'); P(162,152,30,12,'#f0e8da'); P(164,154,26,2,'#dcd2c2');
+  P(18,156,84,6,'#8b6a45'); P(18,156,84,2,'#a07c53'); P(22,162,4,18,'#6f5335'); P(94,162,4,18,'#6f5335');
+  P(30,144,14,12,'#e9e2d2'); P(30,147,14,3,'#c9483c'); P(29,143,16,2,'#f4efe3'); P(54,146,7,10,'#b6bec8'); P(54,149,7,2,'#c9483c');
+  P(68,148,9,8,'#8d8494'); P(68,149,3,1,'#c9483c'); P(82,146,12,10,'#e4e0d6'); P(84,148,8,2,'#c9483c');
   P(106,118,48,24,'#6b6a70'); P(106,118,48,2,'#7d7c84'); P(106,131,48,1,'#5a5960');
-  P(110,120,18,10,'#4e4d55'); P(132,120,18,10,'#4e4d55');   // 雑誌の山
-  P(110,120,18,2,'#c9483c'); P(132,120,18,2,'#5f8ac2');
-  P(110,94,40,24,'#57565e');                                // ブラウン管
-  P(113,97,34,18,'#2b3b4a'); P(113,97,34,3,'rgba(255,255,255,.10)');
-  P(126,90,2,4,'#8d8494'); P(120,88,14,2,'#8d8494');        // アンテナ
-
-  // ---- 床の小物 ----
-  P(140,176,11,8,'#8d8494');                                // 目覚まし時計
-  P(141,177,9,6,'#f3efe6'); P(143,179,1,2,'#33303a'); P(145,180,3,1,'#c9483c');
-  P(108,168,22,11,'#4a4453'); P(106,166,26,3,'#565062');    // ゴミ箱
-  P(112,161,5,6,'#e4e0d6'); P(120,162,4,5,'#e4e0d6');
-  P(14,186,26,9,'#3f3a49'); P(16,184,10,3,'#cfd6de');       // スニーカー
-  P(28,184,10,3,'#cfd6de');
-  P(46,182,30,12,'#5a4a63'); P(48,180,26,3,'#6b5a75');      // 洗濯物カゴ
-  P(52,176,8,5,'#cfd6de'); P(62,177,7,4,'#d8c9a0');
-
-  // ---- 電球の光を床に落とす ----
-  r.globalAlpha = .07;
-  for(let i=0;i<7;i++) P(160-90-i*3, 142+i*8, 180+i*6, 8, '#ffd88a');
-  r.globalAlpha = 1;
-  // 四隅を落とす
-  r.globalAlpha = .18;
-  P(0,0,RW,10,'#000'); P(0,RH-10,RW,10,'#000'); P(0,0,10,RH,'#000'); P(RW-10,0,10,RH,'#000');
-  r.globalAlpha = 1;
+  P(110,120,18,10,'#4e4d55'); P(132,120,18,10,'#4e4d55'); P(110,120,18,2,'#c9483c'); P(132,120,18,2,'#5f8ac2');
+  P(110,94,40,24,'#57565e'); P(113,97,34,18,'#2b3b4a'); P(113,97,34,3,'rgba(255,255,255,.10)'); P(126,90,2,4,'#8d8494'); P(120,88,14,2,'#8d8494');
+  P(140,176,11,8,'#8d8494'); P(141,177,9,6,'#f3efe6'); P(143,179,1,2,'#33303a'); P(145,180,3,1,'#c9483c');
+  P(108,168,22,11,'#4a4453'); P(106,166,26,3,'#565062'); P(112,161,5,6,'#e4e0d6'); P(120,162,4,5,'#e4e0d6');
+  P(14,186,26,9,'#3f3a49'); P(16,184,10,3,'#cfd6de'); P(28,184,10,3,'#cfd6de'); P(46,182,30,12,'#5a4a63'); P(48,180,26,3,'#6b5a75'); P(52,176,8,5,'#cfd6de'); P(62,177,7,4,'#d8c9a0');
+  r.globalAlpha=.07; for(let i=0;i<7;i++) P(160-90-i*3, 142+i*8, 180+i*6, 8, '#ffd88a'); r.globalAlpha=1;
+  r.globalAlpha=.18; P(0,0,RW,10,'#000'); P(0,RH-10,RW,10,'#000'); P(0,0,10,RH,'#000'); P(RW-10,0,10,RH,'#000'); r.globalAlpha=1;
 }
-
+function drawOwned(sc, ox, oy){
+  // 買った家具を部屋座標(RW,RH基準)に重ねる。sc/ox/oy はroomCvの表示変換
+  const owned = LIFE.owned || [];
+  const M = (rx,ry) => [ox + rx*sc, oy + ry*sc];
+  const box2 = (rx,ry,w,h,c1,c2)=>{ const [x,y]=M(rx,ry); ctx.fillStyle=c2; ctx.fillRect(x,y,w*sc,h*sc); ctx.fillStyle=c1; ctx.fillRect(x,y,w*sc,3); };
+  if(owned.includes('rug')){ const [x,y]=M(150,176); ctx.fillStyle='#7c4b52'; ctx.beginPath(); ctx.ellipse(x,y,70*sc,15*sc,0,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='#a86b72'; ctx.lineWidth=2*sc; ctx.beginPath(); ctx.ellipse(x,y,58*sc,11*sc,0,0,Math.PI*2); ctx.stroke(); }
+  if(owned.includes('poster')){ const [x,y]=M(60,110); const w=34*sc,h=26*sc; ctx.fillStyle='#2a2530'; ctx.fillRect(x-2,y-2,w+4,h+4); const g=ctx.createLinearGradient(x,y,x+w,y+h); g.addColorStop(0,'#e0b23a'); g.addColorStop(.5,'#c9483c'); g.addColorStop(1,'#5f8ac2'); ctx.fillStyle=g; ctx.fillRect(x,y,w,h); ctx.fillStyle='rgba(255,255,255,.3)'; ctx.fillRect(x,y,w,3); }
+  if(owned.includes('plant')){ const [x,y]=M(112,150); ctx.fillStyle='#7a5236'; ctx.fillRect(x-6*sc,y,12*sc,12*sc); ctx.fillStyle='#3f8f4a'; for(let i=0;i<5;i++){ const a=-Math.PI/2 + (i-2)*0.5; ctx.save(); ctx.translate(x,y); ctx.rotate(a); ctx.beginPath(); ctx.ellipse(0,-10*sc,4*sc,12*sc,0,0,Math.PI*2); ctx.fill(); ctx.restore(); } ctx.fillStyle='#57b062'; ctx.beginPath(); ctx.arc(x,y-8*sc,3*sc,0,Math.PI*2); ctx.fill(); }
+  if(owned.includes('guitar')){ const [x,y]=M(258,120); ctx.save(); ctx.translate(x,y); ctx.rotate(0.25); ctx.fillStyle='#8a4f28'; ctx.beginPath(); ctx.ellipse(0,26*sc,11*sc,15*sc,0,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(0,10*sc,8*sc,11*sc,0,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#231a12'; ctx.beginPath(); ctx.arc(0,22*sc,4*sc,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#3a2a1c'; ctx.fillRect(-2*sc,-30*sc,4*sc,34*sc); ctx.fillStyle='#d8c9a0'; ctx.fillRect(-3*sc,-34*sc,6*sc,6*sc); ctx.restore(); }
+  if(owned.includes('fridge')){ const [x,y]=M(292,96); ctx.fillStyle='#dfe3e6'; ctx.fillRect(x,y,26*sc,64*sc); ctx.fillStyle='#c7ccd0'; ctx.fillRect(x,y+30*sc,26*sc,2*sc); ctx.fillStyle='#9aa0a6'; ctx.fillRect(x+20*sc,y+6*sc,3*sc,16*sc); ctx.fillStyle='rgba(255,255,255,.4)'; ctx.fillRect(x,y,26*sc,3); }
+  if(owned.includes('bike')){ const [x,y]=M(52,72); ctx.save(); ctx.globalAlpha=.9; ctx.fillStyle='#2b2f36'; ctx.beginPath(); ctx.arc(x-8*sc,y+10*sc,6*sc,0,Math.PI*2); ctx.arc(x+10*sc,y+10*sc,6*sc,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='#c94a3f'; ctx.lineWidth=3*sc; ctx.beginPath(); ctx.moveTo(x-8*sc,y+10*sc); ctx.lineTo(x+2*sc,y); ctx.lineTo(x+10*sc,y+10*sc); ctx.stroke(); ctx.fillStyle='#c94a3f'; ctx.fillRect(x-2*sc,y-4*sc,12*sc,4*sc); ctx.restore(); }
+}
 function drawRoom(){
   if(!roomCv) buildRoom();
   const {W,H} = LAY;
   const scale = Math.max(W/RW, H/RH);
   const dw = Math.ceil(RW*scale), dh = Math.ceil(RH*scale);
-  ctx.save();
-  ctx.imageSmoothingEnabled = false;
+  const ox = (W-dw)/2 | 0, oy = H-dh;
+  ctx.save(); ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = '#2a2530'; ctx.fillRect(0,0,W,H);
-  ctx.drawImage(roomCv, (W-dw)/2 | 0, H-dh, dw, dh);
-
-  // 電球のゆらぎ
+  ctx.drawImage(roomCv, ox, oy, dw, dh);
+  drawOwned(scale, ox, oy);
   const flick = .82 + Math.sin(S.t*2.1)*.05 + Math.sin(S.t*7.3)*.03;
   const g = ctx.createRadialGradient(W*.5, H*.18, 10, W*.5, H*.3, H*.75);
-  g.addColorStop(0, `rgba(255,214,150,${.12*flick})`);
-  g.addColorStop(1, 'rgba(255,190,120,0)');
+  g.addColorStop(0, `rgba(255,214,150,${.12*flick})`); g.addColorStop(1, 'rgba(255,190,120,0)');
   ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
-  ctx.restore();
-  drawVignette();
+  ctx.restore(); drawVignette();
 }
 
+// ---------- スーパー ----------
+function drawMarket(){
+  const {W,H,u} = LAY;
+  let g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#eef2ee'); g.addColorStop(.55,'#e2e7e0'); g.addColorStop(1,'#c4ccc2');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  // 天井ライト
+  for(let i=0;i<5;i++){ const lx=W*(0.12+i*0.2); ctx.fillStyle='rgba(255,255,255,.7)'; ctx.fillRect(lx-F(34),F(4),F(68),F(7)); }
+  // 冷蔵ケース（背面）
+  const caseY=H*0.12, caseH=H*0.34;
+  ctx.fillStyle='#aeb9b3'; ctx.fillRect(0,caseY,W,caseH);
+  ctx.fillStyle='rgba(180,220,235,.35)'; ctx.fillRect(0,caseY,W,caseH);
+  for(let r=0;r<3;r++){ const sy=caseY+F(12)+r*(caseH/3);
+    ctx.fillStyle='#8fa39c'; ctx.fillRect(0,sy+caseH/3-F(8),W,F(6));
+    for(let px=F(12);px<W-F(24);px+=F(34)){
+      const col=['#c9483c','#e0b23a','#6fae63','#5f8ac2','#d98cb0','#e6e0d4','#b06a3a'][(r*5+px)%7|0];
+      ctx.fillStyle=col; ctx.fillRect(px,sy,F(24),caseH/3-F(14));
+      ctx.fillStyle='rgba(255,255,255,.35)'; ctx.fillRect(px,sy,F(24),F(4));
+      ctx.fillStyle='#fff'; ctx.fillRect(px,sy+caseH/3-F(20),F(24),F(5));
+    }
+  }
+  ctx.fillStyle='rgba(255,255,255,.25)'; ctx.fillRect(0,caseY,W,F(5));
+  // 値札POP
+  ctx.fillStyle='#c9483c'; ctx.save(); ctx.translate(W*0.2,caseY+F(18)); ctx.rotate(-0.1); rr(-F(20),-F(11),F(40),F(22),F(4)); ctx.fill(); ctx.fillStyle='#fff'; ctx.font=`800 ${F(13)}px "Yu Gothic UI"`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('特価', 0, 0); ctx.restore();
+  // 床
+  const floorY=H*0.66;
+  g=ctx.createLinearGradient(0,floorY,0,H); g.addColorStop(0,'#d6dbd4'); g.addColorStop(1,'#b3bab1');
+  ctx.fillStyle=g; ctx.fillRect(0,floorY,W,H-floorY);
+  ctx.strokeStyle='rgba(0,0,0,.06)'; ctx.lineWidth=1;
+  for(let i=-4;i<12;i++){ ctx.beginPath(); ctx.moveTo(W*0.5+i*F(60),floorY); ctx.lineTo(W*0.5+i*F(120),H); ctx.stroke(); }
+  for(let y=floorY;y<H;y+=F(26)){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  // じゅん（カゴを持って立つ）
+  drawJun(W*0.28, floorY+F(6), u*2.0, 'stand');
+  // 影
+  ctx.fillStyle='rgba(0,0,0,.14)'; ctx.beginPath(); ctx.ellipse(W*0.28, floorY+F(10), F(40), F(9),0,0,Math.PI*2); ctx.fill();
+  drawVignette();
+}
+// ---------- 就寝 ----------
+function drawSleep(){
+  const {W,H,u} = LAY;
+  ctx.fillStyle='#0a0d14'; ctx.fillRect(0,0,W,H);
+  let g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#141b2a'); g.addColorStop(1,'#0a0d14');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H*0.6);
+  // 窓と月
+  const wx=W*0.12, wy=H*0.1, ww=W*0.26, wh=H*0.3;
+  ctx.fillStyle='#0e1522'; ctx.fillRect(wx,wy,ww,wh);
+  ctx.fillStyle='#e8ecd8'; ctx.beginPath(); ctx.arc(wx+ww*0.7, wy+wh*0.32, Math.min(ww,wh)*0.16, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle='#0e1522'; ctx.beginPath(); ctx.arc(wx+ww*0.64, wy+wh*0.28, Math.min(ww,wh)*0.14, 0, Math.PI*2); ctx.fill();
+  for(let i=0;i<30;i++){ const sx=wx+((i*53)%ww), sy=wy+((i*37)%wh); ctx.fillStyle='rgba(255,240,200,.5)'; ctx.fillRect(sx,sy,1.4,1.4); }
+  ctx.fillStyle='#1c2430'; ctx.fillRect(wx,wy,ww,F(4)); ctx.fillRect(wx+ww/2-1,wy,2,wh); ctx.fillRect(wx,wy+wh/2-1,ww,2);
+  // 床
+  const floorY=H*0.6; ctx.fillStyle='#171410'; ctx.fillRect(0,floorY,W,H-floorY);
+  // 布団に寝るじゅん
+  const bx=W*0.5, by=H*0.78;
+  ctx.fillStyle='rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(bx,by+F(30),W*0.34,F(22),0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#cdbfa6'; rr(bx-W*0.32,by-F(6),W*0.64,F(64),F(14)); ctx.fill();       // 敷布団
+  ctx.fillStyle='#5f7fa6'; rr(bx-W*0.30,by,W*0.6,F(46),F(16)); ctx.fill();             // 掛け布団
+  ctx.fillStyle='#4d6b90'; rr(bx-W*0.30,by,W*0.6,F(10),F(8)); ctx.fill();
+  // 体の盛り上がり
+  ctx.fillStyle='#5f7fa6'; ctx.beginPath(); ctx.ellipse(bx+F(10),by+F(16),W*0.16,F(20),0,0,Math.PI*2); ctx.fill();
+  // 枕と頭
+  ctx.fillStyle='#e9e2d2'; rr(bx-W*0.30,by-F(2),F(52),F(30),F(8)); ctx.fill();
+  ctx.fillStyle='#e3b98d'; ctx.beginPath(); ctx.arc(bx-W*0.28+F(20),by+F(12),F(15),0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#2b2620'; ctx.beginPath(); ctx.arc(bx-W*0.28+F(20),by+F(6),F(15),Math.PI*1.05,Math.PI*1.95); ctx.fill();
+  ctx.strokeStyle='#20242b'; ctx.lineWidth=Math.max(1.5,F(2)); ctx.beginPath(); ctx.arc(bx-W*0.28+F(27),by+F(13),F(3),Math.PI*0.1,Math.PI*0.9); ctx.stroke();
+  // Zzz
+  ctx.fillStyle='rgba(200,214,230,.85)'; ctx.textAlign='left'; ctx.textBaseline='middle';
+  const zt=(S.t*0.8)%3;
+  for(let i=0;i<3;i++){ const a=clamp(1-(zt-i)*0.5,0,1); ctx.globalAlpha=a*0.9; ctx.font=`800 ${F(14+i*8)}px "Yu Gothic UI"`; ctx.fillText('z', bx+F(2)+i*F(16), by-F(20)-i*F(18)-zt*F(6)); }
+  ctx.globalAlpha=1;
+  drawVignette();
+}
+// ---------- キャラ（正面・簡易） ----------
+function drawJun(x,y,s,pose){
+  ctx.save(); ctx.translate(x,y); ctx.scale(s,s);
+  // カゴ
+  if(pose==='stand'){ ctx.fillStyle='#c94a3f'; rr(14,-6,20,14,3); ctx.fill(); ctx.strokeStyle='#8f342c'; ctx.lineWidth=1.4; rr(14,-6,20,14,3); ctx.stroke(); ctx.fillStyle='#e6c07a'; ctx.fillRect(16,-4,7,5); ctx.fillStyle='#7fae63'; ctx.fillRect(25,-4,6,6); }
+  // 脚
+  ctx.fillStyle='#2f3a48'; rr(-9,-14,7,16,2); ctx.fill(); rr(3,-14,7,16,2); ctx.fill();
+  ctx.fillStyle='#20262e'; rr(-10,0,9,4,1); ctx.fill(); rr(2,0,9,4,1); ctx.fill();
+  // 胴
+  ctx.fillStyle='#4a6a8c'; rr(-12,-40,24,28,6); ctx.fill();
+  ctx.fillStyle='#3c5876'; rr(-12,-24,24,10,2); ctx.fill();
+  // 腕
+  ctx.strokeStyle='#4a6a8c'; ctx.lineWidth=6; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(-10,-34); ctx.lineTo(-14,-20); ctx.moveTo(10,-34); ctx.lineTo(15,-22); ctx.stroke();
+  ctx.fillStyle='#e7bd93'; ctx.beginPath(); ctx.arc(-14,-19,3.4,0,Math.PI*2); ctx.arc(16,-21,3.4,0,Math.PI*2); ctx.fill();
+  // 首・頭
+  ctx.fillStyle='#e7bd93'; rr(-4,-46,8,8,2); ctx.fill();
+  ctx.fillStyle='#efc79c'; ctx.beginPath(); ctx.arc(0,-52,11,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#2b2620'; ctx.beginPath(); ctx.arc(0,-54,11,Math.PI*1.02,Math.PI*1.98); ctx.fill(); ctx.fillRect(-11,-55,22,3);
+  ctx.fillStyle='#20242b'; ctx.beginPath(); ctx.arc(-4,-51,1.6,0,Math.PI*2); ctx.arc(4,-51,1.6,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+// ============================================================
+//  render / loop
+// ============================================================
 function render(){
   const {W,H} = LAY;
+  ctx.setTransform(Math.min(window.devicePixelRatio||1,2),0,0,Math.min(window.devicePixelRatio||1,2),0,0);
+  ctx.textBaseline = 'middle';
   if(S.scene === 'room'){ drawRoom(); return; }
+  if(S.scene === 'market'){ drawMarket(); return; }
+  if(S.scene === 'sleep'){ drawSleep(); return; }
   ctx.save();
   if(S.shake > 0) ctx.translate((Math.random()-.5)*15*S.shake, (Math.random()-.5)*15*S.shake);
-
-  drawWarehouse();
-  for(let l=0;l<LANES;l++) drawBelt(l);
-  drawReach();          // 荷物より奥＝伝票の視認性を落とさない
-  const order = [...S.boxes, ...S.demo].sort((a,b)=> a.lane-b.lane || b.x-a.x);
-  for(const b of order) drawBox(b);
-  drawChute();          // 荷物より手前＝シュートに吸い込まれて見える
-  drawAtmosphere();
-  drawFloor();
-  drawHero();
-  for(const f of S.flying) drawBox(f, f.scale ?? 1, f.rot ?? 0);
-  drawBoard();
-  drawEffects();
-  drawVignette();
-  drawBanner();
+  if(S.scene === 'register'){
+    drawRegister(); drawEffects();
+  }else{
+    drawWarehouse();
+    for(let l=0;l<LANES;l++) drawBelt(l);
+    drawReach();
+    const order = [...S.boxes, ...S.demo].sort((a,b)=> a.lane-b.lane || b.x-a.x);
+    for(const b of order) drawBox(b);
+    drawChute(); drawAtmosphere(); drawFloor(); drawHero();
+    for(const f of S.flying) drawBox(f, f.scale ?? 1, f.rot ?? 0);
+    drawBoard(); drawEffects(); drawVignette(); drawBanner();
+  }
   ctx.restore();
-
   if(S.flash > 0){
-    ctx.fillStyle = `rgba(${S.flashColor},${S.flash*.26})`;
-    ctx.fillRect(0,0,W,H);
-    ctx.strokeStyle = `rgba(${S.flashColor},${S.flash*.85})`; ctx.lineWidth = 8;
-    ctx.strokeRect(4,4,W-8,H-8);
+    ctx.fillStyle = `rgba(${S.flashColor},${S.flash*.26})`; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle = `rgba(${S.flashColor},${S.flash*.85})`; ctx.lineWidth = 8; ctx.strokeRect(4,4,W-8,H-8);
   }
 }
-
-// ============================================================
-//  ループ
-// ============================================================
 let last = performance.now();
 function loop(now){
-  const dt = Math.min(.05, (now-last)/1000);
-  last = now;
-  update(dt);
-  render();
-  requestAnimationFrame(loop);
+  const dt = Math.min(.05, (now-last)/1000); last = now;
+  update(dt); render(); requestAnimationFrame(loop);
 }
-
 // ============================================================
-//  進行
+//  ライフ／進行
 // ============================================================
 const yen = n => '¥' + Math.round(n).toLocaleString('ja-JP');
-const SAVE_KEY = 'arubaiter.save';
-const REC_KEY  = 'arubaiter.record';
-
-const CLOCK_RATE = 1.5;              // 実時間1秒 = 作中1分半
-const DAY_START  = 8*60;             // 8:00 起床
-const LAST_TRAIN = 23*60;            // これを過ぎるとラインを上がらされる
+const SAVE_KEY = 'arubaiter.save', REC_KEY = 'arubaiter.record';
+const CLOCK_RATE = 2.6;                 // 実時間1秒 = 作中2.6分（速め）
+const DAY_START = 8*60, LAST_TRAIN = 23*60;
 const hhmm = m => `${Math.floor(m/60)}:${String(Math.round(m)%60).padStart(2,'0')}`;
+
+let JOB = null, overTimer = null;
 
 const LIFE = {
   day:1, money:38000, stamina:100, health:80, mood:70, clock:DAY_START, shifts:0, lv:1, xp:0,
-  earnedToday:0, totalCleared:0, totalEarned:0, restDays:0, played:false,
-  cheapMeal:false, todayBonus:0, event:null, sick:false, ended:false,
+  earnedToday:0, totalCleared:0, totalEarned:0, restDays:0,
+  todayBonus:0, event:null, sick:false, ended:false, owned:[],
 };
-const RULES = {
-  days:30, maxShifts:2,
-  food:1200, cheapFood:600,
-  rentEvery:7, rent:14000,     // 週払いの家賃
-  utilDay:20, util:8400,
-  goal:100000,
-};
+const RULES = { days:30, maxShifts:2, rentEvery:7, rent:14000, utilDay:20, util:8400, goal:100000 };
 const isRentDay = d => d % RULES.rentEvery === 0;
 const xpNeed = lv => 130 + (lv-1)*110;
 const wageRate = () => 1 + (LIFE.lv-1)*0.09;
-
-function saveLife(){
-  try{ localStorage.setItem(SAVE_KEY, JSON.stringify(LIFE)); }catch(e){}
-}
-function loadLife(){
-  try{
-    const raw = localStorage.getItem(SAVE_KEY);
-    if(raw) Object.assign(LIFE, JSON.parse(raw));
-  }catch(e){}
-}
-function record(){ try{ return JSON.parse(localStorage.getItem(REC_KEY)) || null; }catch(e){ return null; } }
-function saveRecord(r){ try{ localStorage.setItem(REC_KEY, JSON.stringify(r)); }catch(e){} }
-
-// 気分がミス上限に与える補正（低いと1回減る）
 const moodPenalty = () => LIFE.mood < 25 ? 1 : 0;
 
-// ---- 遊び --------------------------------------------------
-const PLAYS = [
-  {id:'walk',  n:'散歩する',          d:'金はかからない。気分が少し晴れる。',
-   cost:0,     mood:12, stamina:-4,  mins:60,  xp:0,  event:null},
-  {id:'game',  n:'ゲームセンター',      d:'クレーンとメダル。そこそこ発散できる。',
-   cost:1500,  mood:24, stamina:-6,  mins:90,  xp:0,  event:null},
-  {id:'drink', n:'居酒屋で一杯',        d:'気分は上がるが、体調も財布も削れる。',
-   cost:3200,  mood:34, stamina:-10, health:-6, mins:150, xp:0, event:null},
-  {id:'gacha', d:'ソシャゲに課金する。爆死か大当たりか。',  n:'スマホゲーに課金',
-   cost:5000,  mood:0,  stamina:-2,  mins:40,  xp:0,  gamble:true},
-];
-function doPlay(pl){
-  LIFE.money -= pl.cost;
-  LIFE.stamina = clamp(LIFE.stamina + (pl.stamina||0), 0, 100);
-  if(pl.health) LIFE.health = clamp(LIFE.health + pl.health, 0, 100);
-  LIFE.clock = Math.min(LAST_TRAIN + 30, LIFE.clock + (pl.mins||0));
-  LIFE.played = true;
-  let msg = '';
-  if(pl.gamble){
-    const r = Math.random();
-    if(r < .12){ LIFE.mood = clamp(LIFE.mood+40,0,100); msg = '爆死…かと思いきや大当たり。気分は最高潮。'; }
-    else if(r < .5){ LIFE.mood = clamp(LIFE.mood+16,0,100); msg = 'そこそこ引けた。まあ満足。'; }
-    else { LIFE.mood = clamp(LIFE.mood-14,0,100); msg = '爆死。財布も気分も軽くなった。'; }
-  }else{
-    LIFE.mood = clamp(LIFE.mood + pl.mood, 0, 100);
-    msg = '気分が晴れた。';
-  }
-  saveLife();
-  renderHome();
-  toast(msg);
-}
-function renderPlay(){
-  S.scene = 'room';
-  const el = $('playList'); el.innerHTML = '';
-  for(const pl of PLAYS){
-    const broke = LIFE.money < pl.cost;
-    const b = document.createElement('button');
-    b.className = 'job'; b.disabled = broke;
-    const g = pl.gamble ? '気分 ？（当たれば大きい）' : `気分 +${pl.mood}`;
-    b.innerHTML = `<div class="jn">${pl.n}</div><div class="jd">${pl.d}</div>` +
-      `<div class="jm"><span class="jw">${pl.cost?('-'+yen(pl.cost)):'無料'}</span>` +
-      `<span class="jt">${g}　${pl.mins}分${pl.health?`　体調 ${pl.health}`:''}</span></div>` +
-      (broke ? '<div class="lock">お金が足りない</div>' : '');
-    if(!broke) b.addEventListener('click', () => doPlay(pl));
-    el.appendChild(b);
-  }
-  $('playNote').innerHTML = `${hhmm(LIFE.clock)}　気分 <b>${Math.round(LIFE.mood)}</b>　所持金 <b>${yen(LIFE.money)}</b>`;
-  show('ovPlay');
-}
+function saveLife(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(LIFE)); }catch(e){} }
+function loadLife(){ try{ const raw = localStorage.getItem(SAVE_KEY); if(raw) Object.assign(LIFE, JSON.parse(raw)); if(!Array.isArray(LIFE.owned)) LIFE.owned=[]; }catch(e){} }
+function record(){ try{ return JSON.parse(localStorage.getItem(REC_KEY)) || null; }catch(e){ return null; } }
+function saveRecord(r){ try{ localStorage.setItem(REC_KEY, JSON.stringify(r)); }catch(e){} }
+function gainXp(n){ LIFE.xp += n; let up = 0; while(LIFE.xp >= xpNeed(LIFE.lv)){ LIFE.xp -= xpNeed(LIFE.lv); LIFE.lv++; up++; } return up; }
+
+const SCREENS = ['ovHome','ovWork','ovPlay','ovShop','ovShift','ovMarket','ovDay','ovEnd'];
+function showScreen(id){ SCREENS.forEach(s => $(s).classList.toggle('hide', s !== id)); if(id) $(id).scrollTop = 0; }
+function hideAll(){ SCREENS.forEach(s => $(s).classList.add('hide')); }
+function leaveWork(){ document.body.classList.remove('playing','jobSort','jobSwipe','jobReg'); S.running = false; }
 
 let toastTimer = null;
 function toast(msg){
   let el = $('toast');
-  if(!el){ el = document.createElement('div'); el.id = 'toast'; el.className = 'toast'; document.querySelector('.stage').appendChild(el); }
+  if(!el){ el = document.createElement('div'); el.id='toast'; el.className='toast'; document.querySelector('.stage').appendChild(el); }
   el.textContent = msg; el.classList.add('on');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=> el.classList.remove('on'), 2200);
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=> el.classList.remove('on'), 2200);
 }
 
-// ---- 画面 ----------------------------------------------------
-const SCREENS = ['ovHome','ovPlay','ovShift','ovDay','ovNight','ovEnd'];
-function show(id){
-  SCREENS.forEach(s => $(s).classList.toggle('hide', s !== id));
-  if(id) $(id).scrollTop = 0;
-}
-function hideAll(){ SCREENS.forEach(s => $(s).classList.add('hide')); }
-
-// ---- 朝のできごと --------------------------------------------
+// ---------- 朝のできごと ----------
 const EVENTS = [
   {w:34, t:null},
   {w:10, t:'財布を拾って交番に届けた。持ち主から謝礼をもらった。', money:3000},
@@ -2060,292 +1905,286 @@ const EVENTS = [
   {w:7,  t:'地元の友達から連絡が来た。少し元気が出た。', mood:14},
   {w:6,  t:'隣の部屋の物音で眠れなかった。気が滅入る。', mood:-16, stamina:-8},
 ];
-function rollEvent(){
-  const total = EVENTS.reduce((s,e)=>s+e.w, 0);
-  let r = Math.random()*total;
-  for(const e of EVENTS){ r -= e.w; if(r <= 0) return e; }
-  return EVENTS[0];
-}
+function rollEvent(){ const total = EVENTS.reduce((s,e)=>s+e.w,0); let r = Math.random()*total; for(const e of EVENTS){ r -= e.w; if(r <= 0) return e; } return EVENTS[0]; }
 function applyEvent(e){
-  LIFE.event = e.t;
-  LIFE.todayBonus = e.bonus || 0;
+  LIFE.event = e.t; LIFE.todayBonus = e.bonus || 0;
   if(e.money)   LIFE.money += e.money;
   if(e.stamina) LIFE.stamina = clamp(LIFE.stamina + e.stamina, 5, 100);
   if(e.health)  LIFE.health  = clamp(LIFE.health + e.health, 0, 100);
   if(e.mood)    LIFE.mood    = clamp(LIFE.mood + e.mood, 0, 100);
   if(e.xp)      gainXp(e.xp);
 }
-
-/** 朝：体調しだいで寝込む。倒れると病院代がかかる */
 function rollMorning(){
   LIFE.sick = false;
   if(LIFE.health < 14){
-    LIFE.money -= 12000;
-    LIFE.health = clamp(LIFE.health + 42, 0, 100);
-    LIFE.stamina = clamp(LIFE.stamina + 30, 0, 100);
+    LIFE.money -= 12000; LIFE.health = clamp(LIFE.health + 42, 0, 100); LIFE.stamina = clamp(LIFE.stamina + 30, 0, 100);
     LIFE.sick = true; LIFE.restDays++;
-    LIFE.event = '朝、立ち上がれなかった。病院に運ばれて点滴。医療費 ' + yen(12000) + '。今日は働けない。';
-    LIFE.todayBonus = 0;
-    return;
+    LIFE.event = '朝、立ち上がれなかった。病院に運ばれて点滴。医療費 ' + yen(12000) + '。今日は働けない。'; LIFE.todayBonus = 0; return;
   }
-  // 気分が沈んでいると体調を崩しやすい（体調が低いほど＋気分が低いほど寝込みやすい）
-  let p = LIFE.health < 40 ? (40 - LIFE.health) / 40 * 0.75 : 0;
-  if(LIFE.mood < 35) p += (35 - LIFE.mood) / 35 * 0.4;
+  let p = LIFE.health < 40 ? (40 - LIFE.health)/40*0.75 : 0;
+  if(LIFE.mood < 35) p += (35 - LIFE.mood)/35*0.4;
   if(Math.random() < p){
-    LIFE.sick = true; LIFE.restDays++;
-    LIFE.health = clamp(LIFE.health + 16, 0, 100);
-    LIFE.event = LIFE.mood < 35
-      ? '気が沈んで、体まで重い。今日は起き上がれなかった。'
-      : '熱っぽくて体が動かない。今日は休むしかない。家賃も食費も待ってはくれない。';
-    LIFE.todayBonus = 0;
-    return;
+    LIFE.sick = true; LIFE.restDays++; LIFE.health = clamp(LIFE.health + 16, 0, 100);
+    LIFE.event = LIFE.mood < 35 ? '気が沈んで、体まで重い。今日は起き上がれなかった。' : '熱っぽくて体が動かない。今日は休むしかない。家賃も食費も待ってはくれない。';
+    LIFE.todayBonus = 0; return;
   }
   applyEvent(rollEvent());
 }
 
-function gainXp(n){
-  LIFE.xp += n;
-  let up = 0;
-  while(LIFE.xp >= xpNeed(LIFE.lv)){ LIFE.xp -= xpNeed(LIFE.lv); LIFE.lv++; up++; }
-  return up;
+// ---------- ホーム ----------
+function setGauge(barId, valId, v, lowCol, hiCol, low){
+  $(valId).textContent = Math.round(v);
+  const i = $(barId); i.style.width = clamp(v,0,100) + '%';
+  i.style.background = v < low ? 'linear-gradient(90deg,#ff5a4d,#ff9a90)' : hiCol;
 }
-
-// ---- ホーム --------------------------------------------------
 function renderHome(){
-  S.scene = 'room'; S.running = false;
-  $('hDay').textContent   = LIFE.day;
+  leaveWork(); S.scene = 'room'; stopBGM(); startBGM('room');
+  $('hDay').textContent = LIFE.day;
   $('hClock').textContent = hhmm(LIFE.clock);
   $('hMoney').textContent = yen(LIFE.money);
   $('hMoney').style.color = LIFE.money < 0 ? 'var(--ng)' : '';
-  $('hShift').textContent = (RULES.maxShifts - LIFE.shifts) + ' / ' + RULES.maxShifts;
-  $('hLv').textContent    = LIFE.lv;
-  $('hRate').textContent  = Math.round(wageRate()*100);
-  $('hXp').style.width    = Math.min(100, LIFE.xp / xpNeed(LIFE.lv) * 100) + '%';
-  $('hStam').textContent  = Math.round(LIFE.stamina);
-  $('hStamBar').style.width = LIFE.stamina + '%';
-  $('hStamBar').style.background = LIFE.stamina < 30
-    ? 'linear-gradient(90deg,#ff5a4d,#ff9a90)' : 'linear-gradient(90deg,#ffb020,#ffd479)';
-  $('hHealth').textContent = Math.round(LIFE.health);
-  $('hHealthBar').style.width = LIFE.health + '%';
-  $('hHealthBar').style.background = LIFE.health < 40
-    ? 'linear-gradient(90deg,#ff5a4d,#ff9a90)' : 'linear-gradient(90deg,#3fd18b,#9ae6bd)';
-  $('hMood').textContent = Math.round(LIFE.mood);
-  $('hMoodBar').style.width = LIFE.mood + '%';
-  $('hMoodBar').style.background = LIFE.mood < 25
-    ? 'linear-gradient(90deg,#ff5a4d,#ff9a90)' : 'linear-gradient(90deg,#c78bff,#e2c2ff)';
-  const lateForPlay = LIFE.clock > LAST_TRAIN;
-  $('btnPlay').disabled = lateForPlay;
-  $('btnPlay').style.opacity = lateForPlay ? .4 : '';
+  $('hShift').textContent = (RULES.maxShifts - LIFE.shifts) + '/' + RULES.maxShifts;
+  setGauge('gStam','vStam', LIFE.stamina, null, 'linear-gradient(90deg,#ffb020,#ffd479)', 30);
+  setGauge('gHealth','vHealth', LIFE.health, null, 'linear-gradient(90deg,#3fd18b,#9ae6bd)', 40);
+  setGauge('gMood','vMood', LIFE.mood, null, 'linear-gradient(90deg,#c78bff,#e2c2ff)', 25);
+  $('hLv').textContent = LIFE.lv;
+  $('hRate').textContent = Math.round(wageRate()*100) + '%';
+  $('gXp').style.width = Math.min(100, LIFE.xp / xpNeed(LIFE.lv) * 100) + '%';
+  const rentInfo = isRentDay(LIFE.day) ? `<b style="color:#ff9a90">今夜は家賃 ${yen(RULES.rent)}</b>`
+    : LIFE.day === RULES.utilDay ? `<b style="color:#ff9a90">今夜は光熱費 ${yen(RULES.util)}</b>`
+    : `次の家賃まで ${RULES.rentEvery - LIFE.day % RULES.rentEvery}日`;
+  $('hRentInfo').innerHTML = rentInfo;
 
-  const el = $('jobs'); el.innerHTML = '';
+  const noShift = LIFE.shifts >= RULES.maxShifts;
+  const late = LIFE.clock > LAST_TRAIN - 60;
+  $('aWork').disabled = LIFE.sick || noShift || late;
+  $('workBadge').textContent = LIFE.sick ? '休養' : noShift ? '本日終了' : late ? '時間切れ' : `残${RULES.maxShifts-LIFE.shifts}`;
+  $('aPlay').disabled = LIFE.clock > LAST_TRAIN;
+  $('sleepLabel').textContent = LIFE.sick ? '横になる' : '寝る';
+
+  const parts = [];
+  if(LIFE.mood < 25) parts.push('<b style="color:#ff9a90">気分が沈んでいる</b> ミスできる回数が1回減る');
+  if(LIFE.event) parts.push('<b>できごと</b> ' + LIFE.event);
+  parts.push(`残り <b>${RULES.days - LIFE.day + 1}日</b>　目標 <b>${yen(RULES.goal)}</b>`);
+  $('hNotice').innerHTML = parts.join('　／　');
+  showScreen('ovHome'); saveLife();
+}
+
+// ---------- 出勤先えらび ----------
+function jobIcon(rule){
+  if(rule==='register') return '<svg viewBox="0 0 24 24" fill="none" stroke="#5bd6c4" stroke-width="1.8"><rect x="4" y="10" width="16" height="9" rx="1.5"/><path d="M7 10V6h7l3 4"/><circle cx="9" cy="14.5" r="1"/></svg>';
+  if(rule==='swipe3')  return '<svg viewBox="0 0 24 24" fill="none" stroke="#8fd15b" stroke-width="1.8"><path d="M6 4v13a3 3 0 0 0 6 0V6"/><path d="M18 20V7a3 3 0 0 0-6 0v11"/></svg>';
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="#ffd479" stroke-width="1.8"><rect x="4" y="7" width="16" height="12" rx="1.5"/><path d="M4 12h16M12 7v12"/></svg>';
+}
+function renderWork(){
+  leaveWork(); S.scene = 'room';
+  const el = $('jobList'); el.innerHTML = '';
   for(const j of JOBS){
     const locked  = LIFE.lv < j.minLv;
-    const noShift = LIFE.shifts >= RULES.maxShifts;
     const tired   = LIFE.stamina < Math.round(j.stamina*.5);
-    const late    = LIFE.clock > LAST_TRAIN - 60;
-    const dis     = LIFE.sick || locked || noShift || tired || late;
-    const hourly  = j.wage === 'hour';
-    const wage    = Math.round((hourly ? j.hourly : j.pay) * wageRate() * (1 + LIFE.todayBonus));
+    const wage    = Math.round(j.hourly * wageRate() * (1 + LIFE.todayBonus));
+    const dis     = locked || tired;
+    const cls     = j.rule==='register' ? 'c-reg' : j.rule==='swipe3' ? 'c-waste' : '';
     const b = document.createElement('button');
-    b.className = 'job'; b.disabled = dis;
+    b.className = 'card2 ' + cls; b.disabled = dis;
     b.innerHTML =
-      `<div class="jn">${j.name}</div>` +
-      `<div class="jd">${j.desc}</div>` +
-      `<div class="jm"><span class="jw">${yen(wage)}<span class="jt"> / ${hourly ? '時' : '個'}</span></span>` +
-      `<span class="jt">体力 ${j.stamina}　ミス <b>${j.lives}回</b>まで</span></div>` +
-      (LIFE.sick ? `<div class="lock">今日は体が動かない</div>` :
-       locked  ? `<div class="lock">アルバイターLv${j.minLv} で解禁</div>` :
-       noShift ? `<div class="lock">今日はもう出勤できない</div>` :
-       late    ? `<div class="lock">もう入れる時間じゃない</div>` :
-       tired   ? `<div class="lock">体力が足りない</div>` : '');
+      `<div class="cn"><span class="ci">${jobIcon(j.rule)}</span>${j.name}</div>` +
+      `<div class="cd">${j.desc}</div>` +
+      `<div class="cm"><span class="cw">${yen(wage)}<span class="u">/時</span></span>` +
+      `<span class="ct">体力 ${j.stamina}　ミス <b>${j.lives}回</b>まで</span></div>` +
+      (locked ? `<div class="lock">アルバイターLv${j.minLv} で解禁</div>` :
+       tired  ? `<div class="lock">体力が足りない</div>` : '');
     if(!dis) b.addEventListener('click', () => startShift(j));
     el.appendChild(b);
   }
-
-  const parts = [];
-  if(LIFE.mood < 25) parts.push(`<b style="color:#ff9a90">気分が沈んでいる</b>　今日はミスできる回数が1回減る`);
-  if(LIFE.event) parts.push(`<b>できごと</b>　${LIFE.event}`);
-  if(isRentDay(LIFE.day)) parts.push(`<b>今夜は家賃の支払い</b>　${yen(RULES.rent)}`);
-  else if(LIFE.day === RULES.utilDay) parts.push(`<b>今夜は光熱費の引き落とし</b>　${yen(RULES.util)}`);
-  else parts.push(`次の家賃まで <b>${RULES.rentEvery - LIFE.day % RULES.rentEvery}日</b>`);
-  parts.push(`残り <b>${RULES.days - LIFE.day + 1}日</b>　目標 <b>${yen(RULES.goal)}</b>`);
-  $('hNotice').innerHTML = parts.join('　／　');
-  $('btnSleep').textContent = LIFE.sick ? '横 に な る'
-    : LIFE.shifts > 0 ? '今 日 を 終 え る' : '今日は働かない';
-  document.body.classList.add('atHome');
-  show('ovHome');
-  saveLife();
+  $('workNote').innerHTML = `${hhmm(LIFE.clock)}　残りシフト <b>${RULES.maxShifts-LIFE.shifts}</b>　時給は全て<b>時給制</b>（Lvで上昇）`;
+  showScreen('ovWork');
 }
 
-// ---- シフト --------------------------------------------------
-let JOB = null;
-let overTimer = null;
+// ---------- 遊ぶ ----------
+function doPlay(pl){
+  LIFE.money -= pl.cost;
+  LIFE.stamina = clamp(LIFE.stamina + (pl.stamina||0), 0, 100);
+  if(pl.health) LIFE.health = clamp(LIFE.health + pl.health, 0, 100);
+  LIFE.clock = Math.min(LAST_TRAIN + 30, LIFE.clock + (pl.mins||0));
+  let msg = '';
+  if(pl.gamble){ const r = Math.random();
+    if(r < .12){ LIFE.mood = clamp(LIFE.mood+40,0,100); msg = '大当たり！気分は最高潮。'; }
+    else if(r < .5){ LIFE.mood = clamp(LIFE.mood+16,0,100); msg = 'そこそこ引けた。まあ満足。'; }
+    else { LIFE.mood = clamp(LIFE.mood-14,0,100); msg = '爆死。財布も気分も軽くなった。'; }
+  }else{ LIFE.mood = clamp(LIFE.mood + pl.mood, 0, 100); msg = '気分が晴れた。'; }
+  SFX.buy(); saveLife(); toast(msg); renderPlay();
+}
+function renderPlay(){
+  leaveWork(); S.scene = 'room';
+  const el = $('playList'); el.innerHTML = '';
+  for(const pl of PLAYS){
+    const broke = LIFE.money < pl.cost;
+    const b = document.createElement('button'); b.className = 'card2'; b.disabled = broke;
+    const g = pl.gamble ? '気分 ？（当たれば大）' : `気分 +${pl.mood}`;
+    b.innerHTML = `<div class="cn">${pl.n}</div><div class="cd">${pl.d}</div>` +
+      `<div class="cm"><span class="cw">${pl.cost?('-'+yen(pl.cost)):'無料'}</span>` +
+      `<span class="ct">${g}　${pl.mins}分${pl.health?`　体調 ${pl.health}`:''}</span></div>` +
+      (broke ? '<div class="lock">お金が足りない</div>' : '');
+    if(!broke) b.addEventListener('click', () => doPlay(pl));
+    el.appendChild(b);
+  }
+  $('playNote').innerHTML = `${hhmm(LIFE.clock)}　気分 <b>${Math.round(LIFE.mood)}</b>　所持金 <b>${yen(LIFE.money)}</b>`;
+  showScreen('ovPlay');
+}
 
+// ---------- 買い物 ----------
+function buyItem(it){
+  if(LIFE.money < it.cost || LIFE.owned.includes(it.id)) return;
+  LIFE.money -= it.cost; LIFE.owned.push(it.id);
+  SFX.buy(); saveLife(); toast(`${it.n} を買った。部屋に置いた。`); renderShop();
+}
+function renderShop(){
+  leaveWork(); S.scene = 'room';
+  const el = $('shopList'); el.innerHTML = '';
+  for(const it of SHOP){
+    const owned = LIFE.owned.includes(it.id), broke = LIFE.money < it.cost;
+    const b = document.createElement('button'); b.className = 'card2'; b.disabled = owned || broke;
+    b.innerHTML = `<div class="cn">${it.n}</div><div class="cd">${it.d}</div>` +
+      `<div class="cm"><span class="cw">${owned?'購入済み':('-'+yen(it.cost))}</span></div>` +
+      (owned ? '<div class="lock" style="color:#5bd6c4">部屋に飾ってある</div>' : broke ? '<div class="lock">お金が足りない</div>' : '');
+    if(!owned && !broke) b.addEventListener('click', () => buyItem(it));
+    el.appendChild(b);
+  }
+  $('shopNote').innerHTML = `所持金 <b>${yen(LIFE.money)}</b>　買ったものは部屋の背景に増える。`;
+  showScreen('ovShop');
+}
+
+// ---------- シフト ----------
 function startShift(job){
   try{ ac().resume(); }catch(e){}
   clearTimeout(overTimer); overTimer = null;
-  JOB = job;
-  LIFE.shifts++;
-  LIFE.health = clamp(LIFE.health - 3, 0, 100);   // 働けば体はすり減る
-  LIFE.mood   = clamp(LIFE.mood - 8, 0, 100);     // 働くと気分も少し落ちる
-  S.shiftStart = LIFE.clock;
-  S.endReason = null;
+  JOB = job; LIFE.shifts++;
+  LIFE.health = clamp(LIFE.health - 3, 0, 100);
+  LIFE.mood   = clamp(LIFE.mood - 8, 0, 100);
+  S.shiftStart = LIFE.clock; S.endReason = null;
   DRAG.id = null; DRAG.dy = 0;
-  document.body.classList.remove('atHome');
-  document.body.classList.toggle('swipeJob', job.rule === 'swipe3');
 
-  S.scene = 'line';
+  document.body.classList.add('playing');
+  document.body.classList.toggle('jobSort',  job.rule === 'number');
+  document.body.classList.toggle('jobSwipe', job.rule === 'swipe3');
+  document.body.classList.toggle('jobReg',   job.rule === 'register');
+
   S.paused = false; S.running = true;
   S.boxes = []; S.flying = []; S.fx = []; S.texts = []; S.rings = []; S.demo.length = 0;
   S.score = 0; S.dispScore = 0; S.combo = 0; S.bestCombo = 0;
   S.cleared = 0; S.clearedInLevel = 0;
   S.wrongPicks = 0; S.dropped = 0; S.reactSum = 0; S.reactN = 0; S.sinceMine = 0;
   S.level = 1; S.maxLives = Math.max(1, job.lives - moodPenalty()); S.lives = S.maxLives;
-  S.spawnTimer = 700; S.banner = null;
-  S.laneAlert = [0,0,0]; S.chuteAlert = 0;
-  S.hero.col = Math.floor(LAY.cols/2) - 1; S.hero.lane = 1;
-  S.hero.step = 0; S.hero.reach = 0;
-  placeHero(true);
-  S.codes = [];
-  assignCodes();
-  $('missRow').querySelector('.u').textContent = '/ ' + S.maxLives;
-  updateHUD();
-  hideAll();
-  saveLife();
+  S.spawnTimer = 700; S.banner = null; S.laneAlert = [0,0,0]; S.chuteAlert = 0;
+
+  if(job.rule === 'register'){
+    S.scene = 'register'; REG.cust = null; REG.tray = {}; REG.fly.length = 0; REG.state = 'gap'; REG.gap = 0.5;
+    startBGM('register');
+  }else{
+    S.scene = 'line';
+    S.hero.col = Math.floor(LAY.cols/2) - 1; S.hero.lane = 1; S.hero.step = 0; S.hero.reach = 0; placeHero(true);
+    S.codes = []; assignCodes();
+    startBGM('work');
+  }
+  $('missRow').querySelector('.u').textContent = '/' + S.maxLives;
+  updateHUD(); hideAll(); saveLife();
 }
 
-/** シフト終了（クビ or 定時）→ 給与明細 */
-function gameOver(){
-  S.running = false;
-  SFX.over();
-  // 働いた時間ぶん体力を持っていかれる
-  const mins  = Math.max(20, LIFE.clock - S.shiftStart);
-  const hours = mins/60;
+function endWork(){
+  S.running = false; SFX.over(); stopBGM();
+  const mins  = Math.max(20, LIFE.clock - S.shiftStart), hours = mins/60;
   LIFE.stamina = clamp(LIFE.stamina - Math.round(JOB.stamina*(.5 + hours/3*.5)), 0, 100);
   if(LIFE.clock >= 22*60) LIFE.health = clamp(LIFE.health - 4, 0, 100);
 
-  const rate  = wageRate() * (1 + LIFE.todayBonus);
-  const hourly = JOB.wage === 'hour';
-  const base  = hourly ? Math.round(JOB.hourly * rate * hours)
-                       : Math.round(S.cleared * JOB.pay * rate);
+  const rate = wageRate() * (1 + LIFE.todayBonus);
+  const base  = Math.round(JOB.hourly * rate * hours);
   const combo = S.bestCombo * 25;
-  const minus = Math.round((S.wrongPicks + S.dropped) * (hourly ? 260 : JOB.pay * 1.5));
+  const minus = Math.round((S.wrongPicks + S.dropped) * 320);
   const total = Math.max(0, base + combo - minus);
-  LIFE.money += total;
-  LIFE.earnedToday += total;
-  LIFE.totalEarned += total;
-  LIFE.totalCleared += S.cleared;
-  const up = gainXp(S.cleared*11 + S.bestCombo*4 + S.level*12);
+  LIFE.money += total; LIFE.earnedToday += total; LIFE.totalEarned += total; LIFE.totalCleared += S.cleared;
+  const gained = S.cleared*11 + S.bestCombo*4 + S.level*12;
+  const up = gainXp(gained);
 
   const judged = S.cleared + S.wrongPicks + S.dropped;
-  $('shiftTitle').textContent = S.endReason === 'lasttrain' ? '終電で上がり'
-    : S.lives <= 0 ? '今日はもう上がってくれ' : '本日は上がり';
+  $('shiftTitle').textContent = S.endReason === 'lasttrain' ? '終電で上がり' : S.lives <= 0 ? '今日はもう上がってくれ' : '本日は上がり';
   $('pyHours').textContent = `勤務 ${hhmm(S.shiftStart)} 〜 ${hhmm(LIFE.clock)}（${hours.toFixed(1)}時間）`;
-  $('pyBase').textContent   = hourly
-    ? `時給 ${yen(JOB.hourly*rate)} × ${hours.toFixed(1)}時間`
-    : `処理 ${S.cleared}個 × ${yen(JOB.pay*rate)}`;
-  $('pyBaseV').textContent  = yen(base);
-  $('pyCombo').textContent  = `コンボ手当（最高 ${S.bestCombo}）`;
+  $('pyBase').textContent  = `時給 ${yen(JOB.hourly*rate)} × ${hours.toFixed(1)}時間`;
+  $('pyBaseV').textContent = yen(base);
+  $('pyCombo').textContent = `コンボ手当（最高 ${S.bestCombo}）`;
   $('pyComboV').textContent = yen(combo);
-  $('pyMiss').textContent   = `ミス控除（誤 ${S.wrongPicks} / 落 ${S.dropped}）`;
-  $('pyMissV').textContent  = '-' + yen(minus);
-  $('pyTotal').textContent  = yen(total);
-  $('rCount').textContent   = S.cleared;
-  $('rCombo').textContent   = S.bestCombo;
-  $('rAcc').textContent     = judged ? Math.round(S.cleared/judged*100)+'%' : '-';
-  $('rReact').textContent   = S.reactN ? (S.reactSum/S.reactN).toFixed(2)+'s' : '-';
-  $('rXp').textContent = up > 0
-    ? `アルバイターLv ${LIFE.lv} に上がった　時給 ${Math.round(wageRate()*100)}%`
-    : `経験値 +${S.cleared*11 + S.bestCombo*4 + S.level*12}`;
+  $('pyMiss').textContent  = `ミス控除（誤 ${S.wrongPicks} / 落 ${S.dropped}）`;
+  $('pyMissV').textContent = '-' + yen(minus);
+  $('pyTotal').textContent = yen(total);
+  $('rCount').textContent  = S.cleared;
+  $('rCombo').textContent  = S.bestCombo;
+  $('rAcc').textContent    = judged ? Math.round(S.cleared/judged*100)+'%' : '-';
+  $('rLv').textContent     = LIFE.lv;
+  $('rXp').textContent = up > 0 ? `アルバイターLv ${LIFE.lv} に上がった！時給 ${Math.round(wageRate()*100)}%` : `経験値 +${gained}`;
+
+  const forced = LIFE.shifts >= RULES.maxShifts;
+  $('btnBackHome').textContent = forced ? 'ス ー パ ー へ' : '部 屋 に 戻 る';
   saveLife();
   clearTimeout(overTimer);
-  overTimer = setTimeout(()=> show('ovShift'), 800);
+  overTimer = setTimeout(()=>{ leaveWork(); showScreen('ovShift'); }, 800);
+}
+function backFromShift(){
+  if(LIFE.shifts >= RULES.maxShifts) renderMarket();
+  else renderHome();
 }
 
-// ---- 夜と精算 ------------------------------------------------
-const NIGHT = [
-  {id:'cook',  n:'自炊して早く寝る', d:'米を炊いて、味噌汁を作る。明日の食費も浮く。',
-   stamina:84, health:9,  xp:0,   cheap:true},
-  {id:'bento', n:'コンビニ弁当で寝る', d:'帰り道で買った弁当。可もなく不可もなく。',
-   stamina:76, health:1,  xp:0,   cheap:false},
-  {id:'cup',   n:'カップ麺で済ませる', d:'安上がりだが、続けると体にくる。',
-   stamina:72, health:-7, xp:0,   cheap:false, discount:500},
-  {id:'study', n:'求人を調べて夜更かし', d:'時給のいい現場を探す。寝るのは遅くなる。',
-   stamina:48, health:-6, xp:140, cheap:false},
-];
-function showNight(){
-  S.scene = 'room';
-  const late = LIFE.clock >= 21*60;              // 帰宅が遅い＝寝る時間が削れる
-  const cond = .62 + LIFE.health/260;            // 体調が悪いと回復も鈍る
-  const lateMul = LIFE.clock >= 22.5*60 ? .68 : LIFE.clock >= 21*60 ? .82 : 1;
-  const el = $('nightList'); el.innerHTML = '';
-  for(const n of NIGHT){
-    const st = Math.round(n.stamina * cond * lateMul);
-    const he = n.health + (late ? -5 : 0);
-    const b = document.createElement('button');
-    b.className = 'job';
-    b.innerHTML = `<div class="jn">${n.n}</div><div class="jd">${n.d}</div>` +
-      `<div class="jm"><span class="jt">体力 +${st}　体調 ${he>=0?'+':''}${he}` +
-      `${n.xp?`　経験値 +${n.xp}`:''}${n.cheap?'　明日の食費 半額':''}` +
-      `${n.discount?`　食費 -${yen(n.discount)}`:''}</span></div>`;
-    b.addEventListener('click', () => doNight(n, st, he));
+// ---------- スーパー → 就寝 → 精算 ----------
+function renderMarket(){
+  leaveWork(); S.scene = 'market'; stopBGM(); startBGM('room');
+  const el = $('marketList'); el.innerHTML = '';
+  for(const meal of MEALS){
+    const broke = LIFE.money < meal.cost;
+    const b = document.createElement('button'); b.className = 'card2'; b.disabled = broke;
+    const he = meal.health;
+    b.innerHTML = `<div class="cn">${meal.n}</div><div class="cd">${meal.d}</div>` +
+      `<div class="cm"><span class="cw">${meal.cost?('-'+yen(meal.cost)):'¥0'}</span>` +
+      `<span class="ct">体力 +${meal.stamina}　体調 ${he>=0?'+':''}${he}</span></div>` +
+      (broke ? '<div class="lock">お金が足りない</div>' : '');
+    if(!broke) b.addEventListener('click', () => doMeal(meal));
     el.appendChild(b);
   }
-  $('nightTitle').textContent = `${LIFE.day}日目の夜`;
-  $('nightNote').innerHTML = `${hhmm(LIFE.clock)} 帰宅　／　`
-    + (LIFE.earnedToday > 0 ? `今日の稼ぎ <b>${yen(LIFE.earnedToday)}</b>` : '今日は働かなかった')
-    + (late ? '　／　<b>帰りが遅い</b>　睡眠不足で回復が落ちる' : '');
-  show('ovNight');
+  $('marketNote').innerHTML = `${hhmm(LIFE.clock)}　所持金 <b>${yen(LIFE.money)}</b>${LIFE.earnedToday>0?`　今日の稼ぎ <b>${yen(LIFE.earnedToday)}</b>`:'　今日は働かなかった'}`;
+  showScreen('ovMarket');
 }
-
-function doNight(n, st, he){
-  LIFE.stamina = clamp(LIFE.stamina + st, 0, 100);
-  LIFE.health  = clamp(LIFE.health + he, 0, 100);
-  if(n.xp) gainXp(n.xp);
-  const nextCheap = n.cheap;
-  const discount = n.discount || 0;
-
+function doMeal(meal){
+  LIFE.stamina = clamp(LIFE.stamina + meal.stamina, 0, 100);
+  LIFE.health  = clamp(LIFE.health + meal.health, 0, 100);
+  SFX.buy();
   // 精算
-  const food = Math.max(300, (LIFE.cheapMeal ? RULES.cheapFood : RULES.food) - discount);
+  const food = meal.cost;
   let rent = 0, util = 0;
   if(isRentDay(LIFE.day)) rent = RULES.rent;
   if(LIFE.day === RULES.utilDay) util = RULES.util;
   LIFE.money -= food + rent + util;
 
-  $('dayTitle').textContent = `${LIFE.day}日目 終了`;
+  $('dayTitle').textContent = `${LIFE.day}日目 おわり`;
   $('dEarn').textContent = yen(LIFE.earnedToday);
+  $('dFoodLabel').textContent = meal.id==='none' ? '食費（我慢）' : `食費（${meal.n}）`;
   $('dFood').textContent = '-' + yen(food);
   $('dRentRow').classList.toggle('hide', !(rent || util));
   if(rent || util){
-    $('dRentRow').querySelector('span').textContent =
-      rent && util ? '家賃・光熱費' : rent ? `家賃（${Math.ceil(LIFE.day/RULES.rentEvery)}週目）` : '光熱費';
+    $('dRentRow').querySelector('span').textContent = rent && util ? '家賃・光熱費' : rent ? `家賃（${Math.ceil(LIFE.day/RULES.rentEvery)}週目）` : '光熱費';
     $('dRent').textContent = '-' + yen(rent + util);
   }
   $('dMoney').textContent = yen(LIFE.money);
-  $('dMoney').style.color = LIFE.money < 0 ? '#b8322a' : '';
-  $('dNote').textContent = LIFE.money < 0
-    ? '所持金がマイナス。もう後がない。'
-    : `貯金目標まで ${yen(Math.max(0, RULES.goal - LIFE.money))}`;
-
-  LIFE.cheapMeal = nextCheap;
-  saveLife();
-  show('ovDay');
+  $('dMoney').style.color = LIFE.money < 0 ? '#b8322a' : '#20242b';
+  $('dNote').textContent = LIFE.money < 0 ? '所持金がマイナス。もう後がない。' : `貯金目標まで ${yen(Math.max(0, RULES.goal - LIFE.money))}`;
+  S.scene = 'sleep'; leaveWork(); stopBGM();
+  saveLife(); showScreen('ovDay');
 }
-
 function nextDay(){
   if(LIFE.money < 0) return ending('bankrupt');
   if(LIFE.mood <= 0) return ending('burnout');
   if(LIFE.day >= RULES.days) return ending(
-    LIFE.money >= RULES.goal*1.5 && LIFE.lv >= 5 ? 'hired' :
-    LIFE.money >= RULES.goal ? 'saved' : 'survive');
-  LIFE.day++;
-  LIFE.shifts = 0;
-  LIFE.earnedToday = 0;
-  LIFE.clock = DAY_START;
-  LIFE.played = false;
-  LIFE.mood = clamp(LIFE.mood - 6, 0, 100);   // 気分は放っておくとじわじわ下がる
-  rollMorning();
-  renderHome();
+    LIFE.money >= RULES.goal*1.5 && LIFE.lv >= 5 ? 'hired' : LIFE.money >= RULES.goal ? 'saved' : 'survive');
+  LIFE.day++; LIFE.shifts = 0; LIFE.earnedToday = 0; LIFE.clock = DAY_START;
+  LIFE.mood = clamp(LIFE.mood - 6, 0, 100);
+  rollMorning(); renderHome();
 }
 
 const ENDINGS = {
@@ -2356,56 +2195,48 @@ const ENDINGS = {
   hired:   {t:'正 社 員 登 用', c:'#ffb020', x:'「うちで正社員やらないか」— 主任がそう言った。\n番号を読み違えなくなった目と、休まなかった一ヶ月が、じゅんを拾い上げた。'},
 };
 function ending(kind){
-  LIFE.ended = true;
+  LIFE.ended = true; leaveWork(); stopBGM();
   const e = ENDINGS[kind];
-  $('endTitle').textContent = e.t;
-  $('endTitle').style.color = e.c;
-  $('endText').textContent = e.x;
-  $('eDays').textContent  = LIFE.day;
-  $('eMoney').textContent = yen(LIFE.money);
-  $('eLv').textContent    = LIFE.lv;
-  $('eTotal').textContent = LIFE.totalCleared;
-  const rec = record();
-  const isBest = !rec || LIFE.money > rec.money;
+  $('endTitle').textContent = e.t; $('endTitle').style.color = e.c; $('endText').textContent = e.x;
+  $('eDays').textContent = LIFE.day; $('eMoney').textContent = yen(LIFE.money); $('eLv').textContent = LIFE.lv; $('eTotal').textContent = LIFE.totalCleared;
+  const rec = record(); const isBest = !rec || LIFE.money > rec.money;
   if(isBest) saveRecord({money:LIFE.money, day:LIFE.day, lv:LIFE.lv, kind});
-  $('eBest').textContent = isBest ? `自己ベスト更新　${yen(LIFE.money)}` :
-    `自己ベスト　${yen(rec.money)}（Lv${rec.lv}）`;
+  $('eBest').textContent = isBest ? `自己ベスト更新　${yen(LIFE.money)}` : `自己ベスト　${yen(rec.money)}（Lv${rec.lv}）`;
   try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
-  S.scene = 'room';
-  show('ovEnd');
+  S.scene = 'room'; showScreen('ovEnd');
 }
-
 function newLife(){
   Object.assign(LIFE, {
     day:1, money:38000, stamina:100, health:80, mood:70, clock:DAY_START, shifts:0, lv:1, xp:0,
-    earnedToday:0, totalCleared:0, totalEarned:0, restDays:0, played:false,
-    cheapMeal:false, todayBonus:0, sick:false, ended:false,
+    earnedToday:0, totalCleared:0, totalEarned:0, restDays:0, todayBonus:0, sick:false, ended:false, owned:[],
     event:'今月の家賃までに、なんとか立て直したい。',
   });
-  S.codes = [];
-  renderHome();
+  S.codes = []; renderHome();
 }
 
-$('btnPlay').addEventListener('click', renderPlay);
+// ---------- ボタン配線 ----------
+$('aWork').addEventListener('click', renderWork);
+$('aPlay').addEventListener('click', renderPlay);
+$('aShop').addEventListener('click', renderShop);
+$('aSleep').addEventListener('click', renderMarket);
+$('btnWorkBack').addEventListener('click', renderHome);
 $('btnPlayBack').addEventListener('click', renderHome);
-$('btnSleep').addEventListener('click', showNight);
-$('btnBackHome').addEventListener('click', renderHome);
+$('btnShopBack').addEventListener('click', renderHome);
+$('btnBackHome').addEventListener('click', backFromShift);
 $('btnNextDay').addEventListener('click', nextDay);
 $('btnRestart').addEventListener('click', newLife);
 window.addEventListener('resize', layout);
-window.addEventListener('orientationchange', () => setTimeout(layout, 120));
+window.addEventListener('orientationchange', () => setTimeout(layout, 150));
+if(location.search.indexOf('debug') >= 0){ window.__S = S; window.__LIFE = LIFE; window.__JOBS = JOBS; window.__REG = REG; window.__start = startShift; }
 
-// 自動テスト用フック（?debug=1 のときだけ内部状態を公開）
-if(location.search.indexOf('debug') >= 0){ window.__S = S; window.__LIFE = LIFE; window.__JOBS = JOBS; window.__start = startShift; }
-
-// 初期化
+// ---------- 初期化 ----------
+applyMute();
 layout();
 loadLife();
 if(LIFE.ended || LIFE.day > RULES.days) newLife();
 else { if(!LIFE.event) LIFE.event = '今月の家賃までに、なんとか立て直したい。'; renderHome(); }
 updateHUD();
 requestAnimationFrame(loop);
-
 })();
 </script>
 </body>
