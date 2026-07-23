@@ -64,6 +64,16 @@
     text-align:center;padding:16px;overflow:auto;
     animation:fadeIn .3s ease;
   }
+  /* タイトルは奥で動いているラインを透かして見せる */
+  #ovTitle{
+    background:
+      radial-gradient(58% 52% at 50% 50%, rgba(8,12,16,.95) 0%, rgba(8,12,16,.88) 58%, rgba(8,12,16,.5) 100%),
+      linear-gradient(180deg, rgba(10,14,19,.35) 0%, rgba(8,12,16,.15) 40%, rgba(6,9,13,.55) 100%);
+    backdrop-filter:blur(1.5px);
+  }
+  #ovTitle .card{
+    filter:drop-shadow(0 18px 40px rgba(0,0,0,.55));
+  }
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
   .overlay.hide{display:none}
   .card{max-width:600px;width:100%;display:flex;flex-direction:column;align-items:center;gap:15px;margin:auto}
@@ -87,6 +97,30 @@
   .result .v{font:800 25px/1 "Consolas",monospace}
   .best{font-size:12px;color:var(--accent);letter-spacing:.14em;font-weight:700}
   .hint{font-size:11px;color:#57677a;letter-spacing:.08em}
+
+  /* ---------- 操作パネル（タッチ端末） ---------- */
+  .controls{display:none;align-items:center;justify-content:space-between;gap:14px;padding:2px 4px}
+  .dpad{
+    display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px);
+    grid-template-areas:". u ." "l c r" ". d .";
+  }
+  .dbtn{
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .dbtn svg{width:22px;height:22px;fill:var(--accent)}
+  .dbtn:active{background:#243040;transform:scale(.94)}
+  .dbtn.up{grid-area:u}.dbtn.left{grid-area:l}.dbtn.right{grid-area:r}.dbtn.down{grid-area:d}
+  .dcore{grid-area:c;background:var(--panel2);border-radius:6px;margin:9px}
+  .grab{
+    flex:0 0 auto;width:104px;height:104px;border-radius:50%;border:none;cursor:pointer;
+    background:radial-gradient(circle at 38% 32%, #ffd479, var(--accent) 62%, #d8880c);
+    color:#241804;font:800 19px/1 inherit;letter-spacing:.12em;
+    box-shadow:0 5px 0 #a86c08, 0 12px 22px rgba(0,0,0,.45);
+  }
+  .grab:active{transform:translateY(4px);box-shadow:0 1px 0 #a86c08, 0 6px 14px rgba(0,0,0,.45)}
+  @media (max-width:900px), (hover:none){ .controls{display:flex} }
   @media (max-width:720px){
     .hud{grid-template-columns:1.1fr 1fr .7fr 1fr}
     .stat{padding:6px 9px}
@@ -131,11 +165,11 @@
           </div>
           <div class="rule">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3fd18b" stroke-width="1.8" stroke-linecap="round"><path d="M3 12h13M12 7l5 5-5 5"/><path d="M21 4v16"/></svg>
-            <span>ラインは止まらない。<b>紛らわしい番号</b>が増え、速度も上がり、<b>配置転換</b>で担当が変わる。</span>
+            <span>ラインは止まらない。<b>紛らわしい番号</b>が増え、速度も上がり、担当は<b>最大3番号</b>まで増える。</span>
           </div>
           <div class="rule">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7f92a5" stroke-width="1.7" stroke-linecap="round"><rect x="2.5" y="5.5" width="19" height="13" rx="2"/><path d="M6.5 10h.01M12 10h.01M17.5 10h.01M8 14.2h8"/></svg>
-            <span>キーボードは <b>1 / 2 / 3</b> で各レーン先頭を掴む。<b>重量物</b>は2回掴む。<b>速達</b>は2倍点。</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7f92a5" stroke-width="1.7" stroke-linejoin="round"><path d="M4 8.5 12 5l8 3.5v7L12 19l-8-3.5z"/><path d="M4 8.5 12 12l8-3.5"/><path d="M4.5 16.5h15" stroke="#ffb020"/></svg>
+            <span><b>重量物</b>（注意帯つきの大きい箱）は2回掴む。<b>速達</b>（赤いリボン）は2倍点。</span>
           </div>
         </div>
         <button class="btn" id="btnStart">出　勤</button>
@@ -144,7 +178,7 @@
     </div>
 
     <div class="overlay hide" id="ovOver">
-      <div class="card">
+      <div class="card" id="overCard">
         <div class="title" id="overTitle">本日は上がり</div>
         <div class="result">
           <div><span class="k">SCORE</span><span class="v" id="rScore">0</span></div>
@@ -160,6 +194,17 @@
         <button class="btn" id="btnRetry">も う 一 度</button>
       </div>
     </div>
+  </div>
+
+  <div class="controls">
+    <div class="dpad">
+      <button class="dbtn up"    data-dir="0,-1" aria-label="上へ"><svg viewBox="0 0 24 24"><path d="M12 7l6 8H6z"/></svg></button>
+      <button class="dbtn left"  data-dir="-1,0" aria-label="左へ"><svg viewBox="0 0 24 24"><path d="M7 12l8-6v12z"/></svg></button>
+      <span class="dcore"></span>
+      <button class="dbtn right" data-dir="1,0"  aria-label="右へ"><svg viewBox="0 0 24 24"><path d="M17 12l-8 6V6z"/></svg></button>
+      <button class="dbtn down"  data-dir="0,1"  aria-label="下へ"><svg viewBox="0 0 24 24"><path d="M12 17l-6-8h12z"/></svg></button>
+    </div>
+    <button class="grab" id="btnGrab">取 る</button>
   </div>
 </div>
 
@@ -201,6 +246,12 @@ function layout(){
   LAY.k = LAY.W / 960;                       // 速度スケール
   LAY.minGap = LAY.boxW * 1.62;
   LAY.cage = {x: LAY.portrait ? 62 : 74, y: LAY.floorY + (LAY.H-LAY.floorY)*0.52};
+  LAY.shafts = LAY.portrait ? [110, 350, 560] : [180, 470, 770];
+
+  // 作業員が立てるマス目（ユーザーには見えない）
+  LAY.gridX0 = LAY.chuteW;
+  LAY.cols   = LAY.portrait ? 4 : 6;
+  LAY.cellW  = (LAY.W - LAY.gridX0) / LAY.cols;
 
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   cv.width = LAY.W*dpr; cv.height = LAY.H*dpr;
@@ -214,9 +265,12 @@ function layout(){
   const maxW = Math.min(1020, Math.floor(avail * (LAY.W/LAY.H)), window.innerWidth - 16);
   document.getElementById('wrap').style.maxWidth = Math.max(300, maxW) + 'px';
 
+  initMotes();
+  placeHero(true);
+
   // 進行中なら荷物を新レイアウトへ比例移動させる
   const ratio = prevW ? LAY.W / prevW : 1;
-  for(const b of S.boxes){
+  for(const b of [...S.boxes, ...S.demo]){
     b.y = LAY.laneY[b.lane];
     b.w = b.large ? LAY.lgW : LAY.boxW;
     b.h = b.large ? LAY.lgH : LAY.boxH;
@@ -270,6 +324,8 @@ function noise(dur=.12, vol=.12, cut=900){
   }catch(e){}
 }
 const SFX = {
+  step:   () => { noise(.045,.05,420); tone(150,.04,'sine',.05); },
+  empty:  () => { tone(240,.05,'sine',.05); },
   pick:   () => { tone(920,.06,'triangle',.12); tone(1380,.09,'sine',.07); },
   land:   () => { noise(.09,.09,600); tone(180,.09,'sine',.08); },
   half:   () => { tone(340,.07,'square',.09); },
@@ -295,7 +351,46 @@ const S = {
   shake:0, flash:0, flashColor:'255,90,77',
   banner:null, boardPulse:0, cagePop:0, chuteAlert:0,
   laneAlert:[0,0,0],
+  demo:[], demoTimer:0, motes:[],   // タイトル画面のアトラクト表示
+  hero:{ col:1, lane:1, px:0, py:0, step:0, bob:0, reach:0 },
 };
+
+// ---- 作業員（マス目移動） -----------------------------------
+const cellCenter = col => LAY.gridX0 + LAY.cellW*(col + .5);
+const heroFeetY  = lane => LAY.laneY[lane] + LAY.beltH/2 + 16;
+
+function placeHero(snap){
+  const h = S.hero;
+  h.col = clamp(h.col, 0, LAY.cols-1);
+  h.lane = clamp(h.lane, 0, LANES-1);
+  const tx = cellCenter(h.col), ty = heroFeetY(h.lane);
+  if(snap || !h.px){ h.px = tx; h.py = ty; }
+  h.tx = tx; h.ty = ty;
+}
+function moveHero(dc, dl){
+  const h = S.hero;
+  const nc = clamp(h.col + dc, 0, LAY.cols-1);
+  const nl = clamp(h.lane + dl, 0, LANES-1);
+  if(nc === h.col && nl === h.lane) return;
+  h.col = nc; h.lane = nl; h.step = 1;
+  placeHero(false);
+  SFX.step();
+}
+
+// 空気中の埃（光の筋の中で光る）
+function initMotes(){
+  S.motes = [];
+  for(let i=0;i<70;i++){
+    S.motes.push({
+      x: Math.random()*LAY.W, y: Math.random()*LAY.H,
+      r: .6 + Math.random()*1.9,
+      vx: -(4 + Math.random()*14),
+      ph: Math.random()*Math.PI*2,
+      amp: 3 + Math.random()*10,
+      a: .12 + Math.random()*.3,
+    });
+  }
+}
 
 // localStorage はブラウザ設定や埋め込み環境で例外を投げることがある
 const BEST_KEY = 'sortingline.best';
@@ -331,15 +426,29 @@ function confusable(base, exclude){
 }
 const ZONES = ['東京 北','東京 南','神奈川','埼玉 中','千葉 東','静岡','名古屋','大阪 北','京都','仙台','新潟','広島','福岡','札幌'];
 
-const codeCountForLevel = lv => lv >= 4 ? 2 : 1;
+// レベルが上がるほど担当する番号が増える（最大3）
+const codeCountForLevel = lv => lv >= 8 ? 3 : lv >= 4 ? 2 : 1;
+/** ゲーム開始時の担当を決める。直前のゲームの番号は除外＝毎回ちがう番号になる */
 function assignCodes(){
-  // 直前の担当番号は除外する＝ゲーム開始時もレベルアップ時も必ず番号が変わる
   const prev = S.codes.slice();
   const n = codeCountForLevel(S.level), out = [];
   for(let i=0;i<n;i++) out.push(newCode(out.concat(prev)));
   S.codes = out; S.zones = {};
   const used = [];
   out.forEach(c => { let z; do{ z = pick(ZONES); }while(used.includes(z)); used.push(z); S.zones[c] = z; });
+  S.boardPulse = 1;
+}
+
+/** レベルが上がって担当が増えるとき。既存の番号はそのまま残す */
+function addCode(){
+  const avoid = S.codes.concat(S.boxes.map(b => b.code));
+  const c = newCode(avoid);
+  S.codes.push(c);
+  const used = Object.values(S.zones);
+  let z; do{ z = pick(ZONES); }while(used.includes(z));
+  S.zones[c] = z;
+  // 画面上の荷物も新しい担当で判定し直す（伝票の見た目と判定を一致させる）
+  for(const b of S.boxes) if(!b.judged) b.mine = S.codes.includes(b.code);
   S.boardPulse = 1;
 }
 
@@ -405,6 +514,27 @@ function spawn(){
   });
 }
 
+/** タイトル画面用：判定を持たない見せかけの荷物 */
+function spawnDemo(){
+  const free = [];
+  for(let l=0;l<LANES;l++){
+    let maxX = -Infinity;
+    for(const b of S.demo) if(b.lane===l && b.x > maxX) maxX = b.x;
+    if(maxX === -Infinity || maxX < LAY.W - LAY.minGap) free.push(l);
+  }
+  if(!free.length) return;
+  const lane = pick(free);
+  const large = Math.random() < .14, express = !large && Math.random() < .14;
+  S.demo.push({
+    id:++seq, lane, code:newCode([]), mine:false, large, express,
+    x: LAY.W + 110, y: LAY.laneY[lane],
+    w: large ? LAY.lgW : LAY.boxW,
+    h: large ? LAY.lgH : LAY.boxH,
+    tilt:(Math.random()-.5)*.10, tape:.36+Math.random()*.28,
+    hits:0, judged:false, hitFx:0, wrongFx:0,
+  });
+}
+
 // ---- エフェクト ---------------------------------------------
 function burst(x,y,color,n=14,sp=220){
   for(let i=0;i<n;i++){
@@ -463,42 +593,48 @@ function damage(reason, x, y){
 
 function levelUp(){
   S.level++; S.clearedInLevel = 0;
-  const more = codeCountForLevel(S.level) !== S.codes.length;
-  assignCodes();          // レベルが上がるたびに担当番号は必ず変わる
-  // 画面上の荷物も新しい担当で判定し直す（伝票の見た目と判定を一致させる）
-  for(const b of S.boxes) if(!b.judged) b.mine = S.codes.includes(b.code);
-  S.banner = {
-    text:'配 置 転 換',
-    sub: more ? `LEVEL ${S.level}・担当が ${S.codes.length} 番号に増えた`
-              : `LEVEL ${S.level}・担当番号が変わった`,
-    t:0, color:'#ff9c3c',
-  };
-  SFX.change();
+  // 途中で担当番号が入れ替わることはない。増えるだけ（最大3）
+  if(codeCountForLevel(S.level) > S.codes.length){
+    addCode();
+    S.banner = {text:'担 当 追 加', sub:`LEVEL ${S.level}・担当が ${S.codes.length} 番号になった`, t:0, color:'#ff9c3c'};
+    SFX.change();
+  }else{
+    S.banner = {text:'LEVEL '+S.level, sub:'ラインが速くなる', t:0, color:'#ffb020'};
+    SFX.level();
+  }
   S.flash = .55; S.flashColor = '255,176,32';
   updateHUD();
 }
 
-function hitTest(px, py){
-  let found = null, bx = Infinity;
+/** 作業員の目の前（担当マス）にある荷物を返す */
+function boxInReach(){
+  const h = S.hero;
+  const cx = cellCenter(h.col), half = LAY.cellW/2;
+  let found = null, best = Infinity;
   for(const b of S.boxes){
-    if(px >= b.x-b.w/2 && px <= b.x+b.w/2 && py >= b.y-b.h/2 && py <= b.y+b.h/2 && b.x < bx){
-      bx = b.x; found = b;   // 取り出し口に近い方を優先
-    }
+    if(b.lane !== h.lane) continue;
+    const d = Math.abs(b.x - cx);
+    if(d <= half && d < best){ best = d; found = b; }
   }
-  // 判定済みの荷物は掴めない（奥の荷物をすり抜けて押せてしまうのを防ぐ）
+  // 判定済みの荷物が目の前にある間は、その奥を掴めない
   return found && found.judged ? null : found;
 }
 
-cv.addEventListener('pointerdown', e => {
+function grab(){
   if(!S.running) return;
-  e.preventDefault();
-  const r = cv.getBoundingClientRect();
-  const px = (e.clientX-r.left) * (LAY.W/r.width);
-  const py = (e.clientY-r.top)  * (LAY.H/r.height);
-  const b = hitTest(px, py);
-  if(b) tryPick(b); else ring(px, py, '120,150,180');
-});
+  S.hero.reach = 1;
+  const b = boxInReach();
+  if(b) tryPick(b);
+  else { ring(cellCenter(S.hero.col), LAY.laneY[S.hero.lane], '255,200,90'); SFX.empty(); }
+}
 
+// 画面のどこをタップしても「目の前の荷物を取る」
+cv.addEventListener('pointerdown', e => { e.preventDefault(); grab(); });
+
+const KEYMAP = {
+  ArrowLeft:[-1,0], ArrowRight:[1,0], ArrowUp:[0,-1], ArrowDown:[0,1],
+  a:[-1,0], d:[1,0], w:[0,-1], s:[0,1],
+};
 window.addEventListener('keydown', e => {
   if(!S.running){
     if(e.key === ' ' || e.key === 'Enter'){
@@ -507,13 +643,20 @@ window.addEventListener('keydown', e => {
     }
     return;
   }
-  const l = ['1','2','3'].indexOf(e.key);
-  if(l >= 0){
-    let head = null;
-    for(const b of S.boxes) if(b.lane===l && !b.judged && (!head || b.x < head.x)) head = b;
-    if(head) tryPick(head); else ring(LAY.chuteW+60, LAY.laneY[l], '120,150,180');
-  }
+  const mv = KEYMAP[e.key] || KEYMAP[e.key.toLowerCase && e.key.toLowerCase()];
+  if(mv){ e.preventDefault(); moveHero(mv[0], mv[1]); return; }
+  if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); grab(); }
 });
+
+// 画面上の十字キー／取るボタン（タッチ用）
+document.querySelectorAll('[data-dir]').forEach(el => {
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const [dc,dl] = el.dataset.dir.split(',').map(Number);
+    moveHero(dc, dl);
+  });
+});
+$('btnGrab').addEventListener('pointerdown', e => { e.preventDefault(); grab(); });
 
 // タブが隠れている間は進めない（理不尽なミス防止）
 document.addEventListener('visibilitychange', () => {
@@ -562,6 +705,33 @@ function update(dt){
         }
       }
     }
+  }
+
+  // タイトル画面：ラインだけが動き続けるアトラクト表示
+  if(!S.running){
+    S.demoTimer -= dt*1000;
+    if(S.demoTimer <= 0){ spawnDemo(); S.demoTimer = 760 + Math.random()*700; }
+    for(const b of S.demo) b.x -= 62*dt;
+    S.demo = S.demo.filter(b => b.x + b.w/2 > -30);
+  }else if(S.demo.length){
+    S.demo.length = 0;
+  }
+  // 作業員：マス目間をスッと詰める
+  {
+    const h = S.hero;
+    if(h.tx === undefined) placeHero(true);
+    const k = Math.min(1, dt*17);
+    h.px += (h.tx - h.px) * k;
+    h.py += (h.ty - h.py) * k;
+    h.step = Math.max(0, h.step - dt*4.5);
+    h.reach = Math.max(0, h.reach - dt*4);
+    h.bob += dt * (h.step > .05 ? 16 : 4);
+  }
+
+  // 埃はゆっくり流れ続ける
+  for(const m of S.motes){
+    m.x += m.vx*dt;
+    if(m.x < -8){ m.x = LAY.W + 8; m.y = Math.random()*LAY.H; }
   }
 
   for(const f of S.flying){
@@ -657,6 +827,127 @@ function drawBelt(lane){
   ctx.fillStyle = '#12171d'; ctx.fillRect(0, top+beltH, W, 6);
 }
 
+/** 作業員が手を伸ばせる範囲（うっすら黄色） */
+function drawReach(){
+  if(!S.running) return;
+  const h = S.hero;
+  const cx = h.px, cy = LAY.laneY[h.lane];
+  const w = LAY.cellW, hh = LAY.beltH;
+  const x = cx - w/2, y = cy - hh/2;
+  const pulse = .055 + Math.sin(S.t*2.4)*.012 + h.reach*.10;
+
+  ctx.save();
+  const g = ctx.createLinearGradient(0, y, 0, y+hh);
+  g.addColorStop(0,   `rgba(255,206,90,${pulse*.55})`);
+  g.addColorStop(.5,  `rgba(255,206,90,${pulse})`);
+  g.addColorStop(1,   `rgba(255,206,90,${pulse*.75})`);
+  ctx.fillStyle = g; ctx.fillRect(x, y, w, hh);
+
+  // 縁と四隅のブラケット
+  ctx.strokeStyle = `rgba(255,206,90,${.22 + h.reach*.5})`;
+  ctx.lineWidth = 1.5; ctx.setLineDash([7,7]); ctx.lineDashOffset = -S.t*14;
+  ctx.strokeRect(x+.75, y+.75, w-1.5, hh-1.5);
+  ctx.setLineDash([]);
+  ctx.strokeStyle = `rgba(255,206,90,${.5 + h.reach*.5})`; ctx.lineWidth = 2.4;
+  const c = 15;
+  [[x,y,1,1],[x+w,y,-1,1],[x,y+hh,1,-1],[x+w,y+hh,-1,-1]].forEach(([px,py,sx,sy]) => {
+    ctx.beginPath();
+    ctx.moveTo(px + c*sx, py); ctx.lineTo(px, py); ctx.lineTo(px, py + c*sy);
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
+/** 作業員（背中側から見た上半身） */
+function drawHero(){
+  if(!S.running) return;
+  const h = S.hero;
+  const x = h.px, y = h.py;                 // y = 足元
+  const sway = Math.sin(h.bob) * (h.step > .05 ? 2.2 : .7);
+  const reach = h.reach;
+
+  ctx.save();
+  ctx.translate(x, y);
+  // 影
+  ctx.fillStyle = 'rgba(0,0,0,.45)';
+  ctx.beginPath(); ctx.ellipse(0, 2, 19, 5.5, 0, 0, Math.PI*2); ctx.fill();
+  ctx.translate(sway*.4, -Math.abs(sway)*.5);
+
+  // 腕（荷物へ伸ばす）
+  const ar = reach*10;
+  ctx.strokeStyle = '#2e3a47'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-11, -26); ctx.lineTo(-15, -34 - ar);
+  ctx.moveTo( 11, -26); ctx.lineTo( 15, -34 - ar);
+  ctx.stroke();
+  // 手袋
+  ctx.fillStyle = '#e8eef4';
+  ctx.beginPath(); ctx.arc(-15, -35-ar, 3.6, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc( 15, -35-ar, 3.6, 0, Math.PI*2); ctx.fill();
+
+  // 胴（作業着）＋安全ベスト
+  ctx.fillStyle = '#39485a';
+  rr(-13, -32, 26, 30, 6); ctx.fill();
+  ctx.fillStyle = '#ffb020';
+  rr(-13, -27, 26, 12, 3); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.55)';
+  ctx.fillRect(-13, -23.5, 26, 2.6);
+  ctx.fillStyle = 'rgba(0,0,0,.18)';
+  ctx.fillRect(-1.4, -32, 2.8, 30);
+
+  // 首・後頭部
+  ctx.fillStyle = '#d9a97f';
+  rr(-4.5, -37, 9, 6, 2); ctx.fill();
+  ctx.fillStyle = '#e3b98d';
+  ctx.beginPath(); ctx.arc(0, -44, 9.4, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#2b3543';
+  ctx.beginPath(); ctx.arc(0, -45.4, 9.4, Math.PI*0.02, Math.PI*0.98, true); ctx.fill();
+  // キャップ
+  ctx.fillStyle = '#1f6fb2';
+  ctx.beginPath(); ctx.arc(0, -47, 9.8, Math.PI, 0); ctx.fill();
+  ctx.fillRect(-9.8, -47, 19.6, 2.6);
+  ctx.fillStyle = '#17527f';
+  rr(-11.5, -47.4, 23, 3, 1.5); ctx.fill();
+  ctx.restore();
+}
+
+/** 天窓から差す光の筋と、その中で光る埃 */
+function drawAtmosphere(){
+  const boost = S.running ? .5 : 1;
+  const {W, H} = LAY;
+  const skew = H * .42;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  LAY.shafts.forEach((sx, i) => {
+    const x = sx + Math.sin(S.t*.17 + i*1.7)*12;
+    const w = 84 + i*20;
+    const g = ctx.createLinearGradient(x, 0, x + skew, H);
+    g.addColorStop(0,   `rgba(255,214,152,${.085*boost})`);
+    g.addColorStop(.45, `rgba(255,200,136,${.042*boost})`);
+    g.addColorStop(1,   'rgba(255,190,120,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(x, 0); ctx.lineTo(x+w, 0);
+    ctx.lineTo(x+w+skew, H); ctx.lineTo(x+skew, H);
+    ctx.closePath(); ctx.fill();
+  });
+  for(const m of S.motes){
+    const y = m.y + Math.sin(S.t*.7 + m.ph)*m.amp;
+    ctx.fillStyle = `rgba(255,228,186,${m.a*boost})`;
+    ctx.beginPath(); ctx.arc(m.x, y, m.r, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawVignette(){
+  const {W,H} = LAY;
+  const g = ctx.createRadialGradient(W/2, H*.46, H*.22, W/2, H*.5, H*.98);
+  g.addColorStop(0, 'rgba(0,0,0,0)');
+  g.addColorStop(.65,'rgba(0,0,0,.16)');
+  g.addColorStop(1,  'rgba(0,0,0,.52)');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+}
+
 function drawChute(){
   const {chuteW, boardH, floorY} = LAY;
   const a = S.chuteAlert;
@@ -688,7 +979,9 @@ function drawChute(){
 }
 
 function drawBoard(){
-  const {W, boardH, portrait, cardW, cardH, progW} = LAY;
+  const {W, boardH, portrait, cardH, progW} = LAY;
+  // 担当が3つになったらカードを詰める
+  const cardW = S.codes.length >= 3 ? (portrait ? 116 : 140) : LAY.cardW;
   ctx.fillStyle = '#151d25'; ctx.fillRect(0,0,W,boardH);
   const g = ctx.createLinearGradient(0,0,0,boardH);
   g.addColorStop(0,'rgba(255,255,255,.05)'); g.addColorStop(1,'rgba(0,0,0,.28)');
@@ -790,7 +1083,7 @@ function drawFloor(){
   if(!portrait){
     ctx.textAlign = 'right';
     ctx.fillStyle = '#31404e'; ctx.font = '700 10.5px "Yu Gothic UI", sans-serif';
-    ctx.fillText('クリック／タップで抜き取り　　1 2 3 キーで各レーン先頭', W-24, floorY+64);
+    ctx.fillText('十字キーで移動　　スペース／画面タップで取る', W-24, floorY+64);
   }
 }
 
@@ -801,7 +1094,7 @@ function drawCage(){
   const w = 96, h = 62;
   ctx.fillStyle = 'rgba(0,0,0,.45)';
   ctx.beginPath(); ctx.ellipse(0, h/2+8, w*.5, 7, 0, 0, Math.PI*2); ctx.fill();
-  const stack = Math.min(5, S.cleared);
+  const stack = S.running ? Math.min(5, S.cleared) : 5;   // タイトルではカゴ車を満載に見せる
   for(let i=0;i<stack;i++){
     ctx.fillStyle = i%2 ? '#a9793f' : '#c08a4f';
     ctx.fillRect(-w/2+9 + (i%2)*6, h/2-14 - i*9, w-26, 9);
@@ -815,9 +1108,12 @@ function drawCage(){
   ctx.beginPath(); ctx.arc(-w/2+12, h/2+5, 5, 0, Math.PI*2); ctx.fill();
   ctx.beginPath(); ctx.arc(w/2-12, h/2+5, 5, 0, Math.PI*2); ctx.fill();
   // 行先札
-  ctx.fillStyle = '#f6f3e8'; rr(-26, -h/2-18, 52, 16, 2); ctx.fill();
-  ctx.fillStyle = '#15181d'; ctx.font = '800 12px Consolas, monospace'; ctx.textAlign = 'center';
-  ctx.fillText(S.codes.join('/').slice(0,7) || '---', 0, -h/2-9.5);
+  const label = S.codes.join('/') || '---';
+  const lf = S.codes.length >= 3 ? 9 : S.codes.length === 2 ? 10.5 : 12;
+  const lw = S.codes.length >= 3 ? 86 : S.codes.length === 2 ? 66 : 52;
+  ctx.fillStyle = '#f6f3e8'; rr(-lw/2, -h/2-18, lw, 16, 2); ctx.fill();
+  ctx.fillStyle = '#15181d'; ctx.font = `800 ${lf}px Consolas, monospace`; ctx.textAlign = 'center';
+  ctx.fillText(label, 0, -h/2-9.5);
   ctx.restore();
 }
 
@@ -965,13 +1261,17 @@ function render(){
 
   drawWarehouse();
   for(let l=0;l<LANES;l++) drawBelt(l);
-  const order = [...S.boxes].sort((a,b)=> a.lane-b.lane || b.x-a.x);
+  drawReach();          // 荷物より奥＝伝票の視認性を落とさない
+  const order = [...S.boxes, ...S.demo].sort((a,b)=> a.lane-b.lane || b.x-a.x);
   for(const b of order) drawBox(b);
   drawChute();          // 荷物より手前＝シュートに吸い込まれて見える
+  drawAtmosphere();
   drawFloor();
+  drawHero();
   for(const f of S.flying) drawBox(f, f.scale ?? 1, f.rot ?? 0);
   drawBoard();
   drawEffects();
+  drawVignette();
   drawBanner();
   ctx.restore();
 
@@ -1010,6 +1310,9 @@ function start(){
   S.level = 1; S.lives = CFG.maxLives;
   S.spawnTimer = 700; S.banner = null;
   S.laneAlert = [0,0,0]; S.chuteAlert = 0;
+  S.hero.col = Math.floor(LAY.cols/2) - 1; S.hero.lane = 1;
+  S.hero.step = 0; S.hero.reach = 0;
+  placeHero(true);
   assignCodes();
   updateHUD();
   $('ovTitle').classList.add('hide');
