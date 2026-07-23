@@ -44,9 +44,14 @@
   .stat .v{font:800 25px/1 "Consolas","SF Mono",monospace;letter-spacing:.02em;white-space:nowrap}
   .stat .v .u{font-size:13px;color:var(--sub);margin-left:5px;letter-spacing:0}
   .stat .v.hot .u{color:var(--accent)}
-  .lives{display:flex;gap:6px;align-items:center;height:25px}
-  .lives svg{width:21px;height:21px;transition:opacity .25s, transform .25s}
+  .missrow{display:flex;align-items:center;gap:7px}
+  .lives{display:flex;gap:5px;align-items:center;height:25px;margin-left:2px}
+  .lives svg{width:20px;height:20px;transition:opacity .25s, transform .25s}
   .lives svg.lost{opacity:.16;transform:scale(.78) rotate(-14deg)}
+  .missrow.danger{color:var(--ng)}
+  .missrow.danger .u{color:var(--ng)}
+  .missrow.danger #missNum{animation:missPulse .9s ease-in-out infinite}
+  @keyframes missPulse{0%,100%{opacity:1}50%{opacity:.45}}
 
   /* ---------- stage ---------- */
   .stage{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line);
@@ -104,7 +109,9 @@
     <div class="stat"><div class="k">SCORE</div><div class="v" id="score">0</div></div>
     <div class="stat"><div class="k">COMBO</div><div class="v" id="combo">0<span class="u">x1</span></div></div>
     <div class="stat"><div class="k">LEVEL</div><div class="v" id="level">1</div></div>
-    <div class="stat"><div class="k">MISS</div><div class="lives" id="lives"></div></div>
+    <div class="stat"><div class="k">MISS</div>
+      <div class="v missrow" id="missRow"><span id="missNum">0</span><span class="u">/ 3</span><span class="lives" id="lives"></span></div>
+    </div>
   </div>
 
   <div class="stage">
@@ -326,8 +333,10 @@ const ZONES = ['東京 北','東京 南','神奈川','埼玉 中','千葉 東','
 
 const codeCountForLevel = lv => lv >= 4 ? 2 : 1;
 function assignCodes(){
+  // 直前の担当番号は除外する＝ゲーム開始時もレベルアップ時も必ず番号が変わる
+  const prev = S.codes.slice();
   const n = codeCountForLevel(S.level), out = [];
-  for(let i=0;i<n;i++) out.push(newCode(out));
+  for(let i=0;i<n;i++) out.push(newCode(out.concat(prev)));
   S.codes = out; S.zones = {};
   const used = [];
   out.forEach(c => { let z; do{ z = pick(ZONES); }while(used.includes(z)); used.push(z); S.zones[c] = z; });
@@ -337,6 +346,9 @@ function assignCodes(){
 // ---- HUD ----------------------------------------------------
 const $ = id => document.getElementById(id);
 function renderLives(){
+  const used = CFG.maxLives - S.lives;
+  $('missNum').textContent = used;
+  $('missRow').classList.toggle('danger', S.lives === 1);
   const el = $('lives'); el.innerHTML = '';
   for(let i=0;i<CFG.maxLives;i++){
     const lost = i >= S.lives;
@@ -451,17 +463,17 @@ function damage(reason, x, y){
 
 function levelUp(){
   S.level++; S.clearedInLevel = 0;
-  const needChange = codeCountForLevel(S.level) !== S.codes.length || S.level % 3 === 1;
-  if(needChange){
-    assignCodes();
-    // 画面上の荷物も新しい担当で判定し直す（伝票の見た目と判定を一致させる）
-    for(const b of S.boxes) if(!b.judged) b.mine = S.codes.includes(b.code);
-    S.banner = {text:'配 置 転 換', sub:'担当番号が変わった', t:0, color:'#ff9c3c'};
-    SFX.change();
-  }else{
-    S.banner = {text:'LEVEL '+S.level, sub:'ラインが速くなる', t:0, color:'#ffb020'};
-    SFX.level();
-  }
+  const more = codeCountForLevel(S.level) !== S.codes.length;
+  assignCodes();          // レベルが上がるたびに担当番号は必ず変わる
+  // 画面上の荷物も新しい担当で判定し直す（伝票の見た目と判定を一致させる）
+  for(const b of S.boxes) if(!b.judged) b.mine = S.codes.includes(b.code);
+  S.banner = {
+    text:'配 置 転 換',
+    sub: more ? `LEVEL ${S.level}・担当が ${S.codes.length} 番号に増えた`
+              : `LEVEL ${S.level}・担当番号が変わった`,
+    t:0, color:'#ff9c3c',
+  };
+  SFX.change();
   S.flash = .55; S.flashColor = '255,176,32';
   updateHUD();
 }
@@ -1033,6 +1045,7 @@ window.addEventListener('orientationchange', () => setTimeout(layout, 120));
 if(location.search.indexOf('debug') >= 0) window.__S = S;
 
 // 初期化
+document.querySelector('#missRow .u').textContent = '/ ' + CFG.maxLives;
 layout();
 assignCodes();
 S.boardPulse = 0;
