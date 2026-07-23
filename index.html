@@ -34,7 +34,9 @@
   .wrap{width:100%;max-width:1020px;display:flex;flex-direction:column;gap:8px}
 
   /* ---------- HUD ---------- */
-  body.atHome .hud, body.atHome .controls{display:none}
+  body.atHome .hud, body.atHome .controls, body.swipeJob .controls{display:none}
+  body.swipeJob canvas{cursor:grab}
+  body.swipeJob canvas:active{cursor:grabbing}
   .prow.hours{color:#6d675e;font-size:11px;border-bottom:1px solid rgba(0,0,0,.25)}
   .hud{
     display:grid;grid-template-columns:1.2fr 1fr .8fr 1fr;gap:1px;
@@ -407,9 +409,9 @@ const JOBS = [
   { id:'fruit', name:'青果市場 選果ライン', short:'選果', pay:98, lives:4, stamina:30,
     speed:0.88, spawnMul:0.94, rule:'rotten', minLv:1,
     desc:'傷んだ果物だけを弾く。番号は読まなくていいが、傷みは見落としやすい。' },
-  { id:'waste', name:'クリーンセンター 分別ライン', short:'分別', pay:190, lives:3, stamina:46,
-    speed:1.10, spawnMul:0.90, rule:'sort3', minLv:3,
-    desc:'レーンごとに回収する資源が違う（1カン／2ビン／3ペット）。自分が立っているレーンの資源だけを取る。' },
+  { id:'waste', name:'クリーンセンター 分別ライン', short:'分別', wage:'hour', hourly:1380,
+    pay:0, lives:3, stamina:46, speed:1.06, spawnMul:0.62, rule:'swipe3', minLv:3,
+    desc:'3本のレーンに資源が混ざって流れてくる。スワイプで正しいレーン（1カン／2ビン／3ペット）へ移す。時給制。' },
 ];
 
 const CFG = {
@@ -622,16 +624,11 @@ function spawn(){
   S.sinceMine = mine ? 0 : S.sinceMine + 1;
 
   const rotten = JOB && JOB.rule === 'rotten';
-  const sort3  = JOB && JOB.rule === 'sort3';
+  const swipe3 = JOB && JOB.rule === 'swipe3';
   let code = '', rot = 0, type = -1;
-  if(sort3){
-    // レーンごとに回収する資源が決まっている。lane と type が一致するものだけが自分の担当
-    if(mine) type = lane;
-    else{
-      const junkRate = Math.min(.34, .16 + S.level*.02);
-      if(Math.random() < junkRate) type = 3;                       // 一般ごみ（誰も取らない）
-      else{ do { type = rnd(3); } while(type === lane); }          // 隣のカゴ行き
-    }
+  if(swipe3){
+    // どのレーンにも資源が混ざって流れてくる。正しいレーンへ移すのがプレイヤーの仕事
+    type = rnd(3);
     code = String(100 + rnd(900));
   }else if(rotten){
     // 傷み具合。0.5以上が「弾くべき品」。レベルが上がるほど境目が際どくなる
@@ -647,7 +644,7 @@ function spawn(){
     const cr = Math.min(.82, .3 + S.level*.07);
     code = Math.random() < cr ? confusable(pick(S.codes), avoid) : newCode(avoid);
   }
-  const plain   = !rotten && !sort3;
+  const plain   = !rotten && !swipe3;
   const large   = plain && S.level >= 3 && Math.random() < .15;
   const express = plain && !large && Math.random() < .12;
   const fragile = !!(JOB && JOB.fragile);
@@ -658,7 +655,8 @@ function spawn(){
     x: LAY.W + 110, y: LAY.laneY[lane],
     w: large ? LAY.lgW : LAY.boxW,
     h: large ? LAY.lgH : LAY.boxH,
-    kind: rotten ? 'crate' : sort3 ? 'waste' : 'box',
+    kind: rotten ? 'crate' : swipe3 ? 'waste' : 'box',
+    laneY: LAY.laneY[lane],        // レーン移動のアニメ用
     tilt: (Math.random()-.5)*.10,
     tape: .36 + Math.random()*.28,
     hits:0, judged:false, hitFx:0, wrongFx:0,
@@ -703,12 +701,7 @@ const ring = (x,y,color='255,255,255') => S.rings.push({x,y,t:0,life:.4,color});
 // ============================================================
 function tryPick(b){
   if(!b || b.judged) return;
-  // 分別ラインは「立っているレーンの資源かどうか」で判定する
-  let ok = b.mine, reason = '誤仕分け';
-  if(JOB && JOB.rule === 'sort3'){
-    ok = b.type === S.hero.lane;
-    reason = b.type === 3 ? '一般ごみ' : 'カゴ違い';
-  }
+  const ok = b.mine, reason = '誤仕分け';
   if(ok){
     b.hits++;
     if(b.hits < ((b.large || b.fragile) ? 2 : 1)){
@@ -779,15 +772,70 @@ function boxInReach(){
 }
 
 function grab(){
-  if(!S.running) return;
+  if(!S.running || isSwipeJob()) return;
   S.hero.reach = 1;
   const b = boxInReach();
   if(b) tryPick(b);
   else { ring(cellCenter(S.hero.col), LAY.laneY[S.hero.lane], '255,200,90'); SFX.empty(); }
 }
 
-// 画面のどこをタップしても「目の前の荷物を取る」
-cv.addEventListener('pointerdown', e => { e.preventDefault(); grab(); });
+const isSwipeJob = () => !!(JOB && JOB.rule === 'swipe3');
+
+/** 分別ライン：資源をつまんで上下のレーンへ移す */
+const DRAG = { id:null, y0:0, dy:0, ox:0 };
+function pointerPos(e){
+  const r = cv.getBoundingClientRect();
+  return { x:(e.clientX-r.left)*(LAY.W/r.width), y:(e.clientY-r.top)*(LAY.H/r.height) };
+}
+function pickAt(px, py){
+  let found = null, best = Infinity;
+  for(const b of S.boxes){
+    if(b.judged) continue;
+    const hw = Math.max(b.w/2, 34), hh = Math.max(b.h/2, 34);
+    if(px >= b.x-hw && px <= b.x+hw && py >= b.y-hh && py <= b.y+hh){
+      const d = Math.abs(px-b.x) + Math.abs(py-b.y);
+      if(d < best){ best = d; found = b; }
+    }
+  }
+  return found;
+}
+function moveLane(b, dir){
+  const nl = clamp(b.lane + dir, 0, LANES-1);
+  if(nl === b.lane) return false;
+  b.lane = nl;
+  SFX.step();
+  ring(b.x, LAY.laneY[nl], '255,206,90');
+  return true;
+}
+
+cv.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  if(!S.running) return;
+  if(!isSwipeJob()){ grab(); return; }
+  const p = pointerPos(e);
+  const b = pickAt(p.x, p.y);
+  if(b){ DRAG.id = b.id; DRAG.y0 = p.y; DRAG.dy = 0; DRAG.ox = p.x - b.x; b.held = 1; }
+  else ring(p.x, p.y, '120,150,180');
+});
+cv.addEventListener('pointermove', e => {
+  if(DRAG.id === null) return;
+  const p = pointerPos(e);
+  DRAG.dy = p.y - DRAG.y0;
+});
+function endDrag(){
+  if(DRAG.id === null) return;
+  const b = S.boxes.find(o => o.id === DRAG.id);
+  if(b){
+    b.held = 0;
+    const step = LAY.laneY[1] - LAY.laneY[0];
+    const n = Math.round(DRAG.dy / (step*.55));
+    if(n !== 0) moveLane(b, clamp(n, -2, 2));
+  }
+  DRAG.id = null; DRAG.dy = 0;
+}
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+cv.addEventListener('pointerleave', endDrag);
 
 const KEYMAP = {
   ArrowLeft:[-1,0], ArrowRight:[1,0], ArrowUp:[0,-1], ArrowDown:[0,1],
@@ -850,8 +898,14 @@ function update(dt){
       S.spawnTimer = spawnInterval() * (.84 + Math.random()*.34);
     }
     const v = speedNow(), gone = [];
+    const swipe = isSwipeJob(), laneStep = LAY.laneY[1] - LAY.laneY[0];
     for(const b of S.boxes){
       b.x -= v*dt;
+      if(swipe){
+        // レーン移動のアニメ＋ドラッグ中の追従
+        const target = LAY.laneY[b.lane] + (DRAG.id === b.id ? clamp(DRAG.dy, -laneStep*1.1, laneStep*1.1)*.55 : 0);
+        b.y += (target - b.y) * Math.min(1, dt*16);
+      }
       if(b.enterT === null && b.x + b.w/2 <= LAY.W) b.enterT = S.t;
       if(b.hitFx>0)   b.hitFx   = Math.max(0, b.hitFx - dt*4);
       if(b.wrongFx>0) b.wrongFx = Math.max(0, b.wrongFx - dt*1.8);
@@ -861,7 +915,23 @@ function update(dt){
       const ids = new Set(gone.map(g=>g.id));
       S.boxes = S.boxes.filter(b => !ids.has(b.id));
       for(const g of gone){
-        if(g.mine && !g.judged){
+        if(g.judged) continue;
+        if(swipe){
+          // 正しいレーンのままカゴへ落ちれば処理成功、違えば誤混入
+          if(g.lane === g.type){
+            S.cleared++; S.clearedInLevel++; S.combo++;
+            S.bestCombo = Math.max(S.bestCombo, S.combo);
+            S.score += 100 * multiplier();
+            burst(LAY.chuteW+40, g.y, '63,209,139', 10, 140);
+            SFX.pick();
+            if(S.clearedInLevel >= CFG.clearPerLevel) levelUp();
+            updateHUD();
+          }else{
+            S.chuteAlert = 1; S.laneAlert[g.lane] = 1; S.dropped++;
+            SFX.drop();
+            damage('誤混入', LAY.chuteW+58, g.y);
+          }
+        }else if(g.mine){
           S.chuteAlert = 1; S.laneAlert[g.lane] = 1; S.dropped++;
           SFX.drop();
           damage('取りこぼし', LAY.chuteW+56, g.y);
@@ -992,7 +1062,7 @@ function drawBelt(lane){
 
 /** 作業員が手を伸ばせる範囲（うっすら黄色） */
 function drawReach(){
-  if(!S.running) return;
+  if(!S.running || isSwipeJob()) return;
   const h = S.hero;
   const cx = h.px, cy = LAY.laneY[h.lane];
   const w = LAY.cellW, hh = LAY.beltH;
@@ -1023,7 +1093,7 @@ function drawReach(){
 
 /** 作業員（背中側から見た上半身） */
 function drawHero(){
-  if(!S.running) return;
+  if(!S.running || isSwipeJob()) return;
   const h = S.hero;
   const x = h.px, y = h.py;                 // y = 足元
   const sway = Math.sin(h.bob) * (h.step > .05 ? 2.2 : .7);
@@ -1125,7 +1195,7 @@ function drawChute(){
   ctx.beginPath(); ctx.moveTo(chuteW-6, boardH); ctx.lineTo(chuteW-6, floorY); ctx.stroke();
   ctx.setLineDash([]);
 
-  const sort3 = JOB && JOB.rule === 'sort3';
+  const sort3 = isSwipeJob();
   for(let l=0;l<LANES;l++){
     const cy = LAY.laneY[l], al = S.laneAlert[l];
     ctx.save();
@@ -1205,7 +1275,7 @@ function drawBoard(){
   }
 
   // 分別ラインは「レーン＝資源」の対応表を出す
-  if(JOB && JOB.rule === 'sort3'){
+  if(JOB && JOB.rule === 'swipe3'){
     const names = ['カン','ビン','ペット'];
     const cw = 232, ch = cardH, cy = cardY;
     ctx.save();
@@ -1309,7 +1379,8 @@ function drawFloor(){
   if(!portrait){
     ctx.textAlign = 'right';
     ctx.fillStyle = '#31404e'; ctx.font = '700 10.5px "Yu Gothic UI", sans-serif';
-    ctx.fillText('十字キーで移動　　スペース／画面タップで取る', W-24, floorY+64);
+    ctx.fillText(isSwipeJob() ? 'つかんで上下にスワイプ／ドラッグで正しいレーンへ'
+                              : '十字キーで移動　　スペース／画面タップで取る', W-24, floorY+64);
   }
 }
 
@@ -1463,9 +1534,15 @@ function drawBox(b, scale=1, rot=0, alpha=1){
   if(b.wrongFx > 0) ctx.translate(Math.sin(b.wrongFx*42)*5, 0);
 
   if(b.kind === 'waste'){
+    const held = b.held ? 1 : 0;
+    if(held){
+      ctx.scale(1.12, 1.12);
+      ctx.shadowColor = 'rgba(255,206,90,.9)'; ctx.shadowBlur = 18;
+    }
     ctx.fillStyle = 'rgba(0,0,0,.42)';
     ctx.beginPath(); ctx.ellipse(3, h/2+4, w*.30, 7, 0, 0, Math.PI*2); ctx.fill();
     drawWasteIcon(b.type, h*1.02, b.tone);
+    ctx.shadowBlur = 0;
     if(b.hitFx > 0){
       ctx.fillStyle = `rgba(255,255,255,${b.hitFx*.3})`;
       ctx.beginPath(); ctx.arc(0,0,h*.46,0,Math.PI*2); ctx.fill();
@@ -1964,13 +2041,14 @@ function renderHome(){
     const tired   = LIFE.stamina < Math.round(j.stamina*.5);
     const late    = LIFE.clock > LAST_TRAIN - 60;
     const dis     = LIFE.sick || locked || noShift || tired || late;
-    const wage    = Math.round(j.pay * wageRate() * (1 + LIFE.todayBonus));
+    const hourly  = j.wage === 'hour';
+    const wage    = Math.round((hourly ? j.hourly : j.pay) * wageRate() * (1 + LIFE.todayBonus));
     const b = document.createElement('button');
     b.className = 'job'; b.disabled = dis;
     b.innerHTML =
       `<div class="jn">${j.name}</div>` +
       `<div class="jd">${j.desc}</div>` +
-      `<div class="jm"><span class="jw">${yen(wage)}<span class="jt"> / 個</span></span>` +
+      `<div class="jm"><span class="jw">${yen(wage)}<span class="jt"> / ${hourly ? '時' : '個'}</span></span>` +
       `<span class="jt">体力 ${j.stamina}　ミス <b>${j.lives}回</b>まで</span></div>` +
       (LIFE.sick ? `<div class="lock">今日は体が動かない</div>` :
        locked  ? `<div class="lock">アルバイターLv${j.minLv} で解禁</div>` :
@@ -2007,7 +2085,9 @@ function startShift(job){
   LIFE.health = clamp(LIFE.health - 3, 0, 100);   // 働けば体はすり減る
   S.shiftStart = LIFE.clock;
   S.endReason = null;
+  DRAG.id = null; DRAG.dy = 0;
   document.body.classList.remove('atHome');
+  document.body.classList.toggle('swipeJob', job.rule === 'swipe3');
 
   S.scene = 'line';
   S.paused = false; S.running = true;
@@ -2040,9 +2120,11 @@ function gameOver(){
   if(LIFE.clock >= 22*60) LIFE.health = clamp(LIFE.health - 4, 0, 100);
 
   const rate  = wageRate() * (1 + LIFE.todayBonus);
-  const base  = Math.round(S.cleared * JOB.pay * rate);
+  const hourly = JOB.wage === 'hour';
+  const base  = hourly ? Math.round(JOB.hourly * rate * hours)
+                       : Math.round(S.cleared * JOB.pay * rate);
   const combo = S.bestCombo * 25;
-  const minus = Math.round((S.wrongPicks + S.dropped) * JOB.pay * 1.5);
+  const minus = Math.round((S.wrongPicks + S.dropped) * (hourly ? 260 : JOB.pay * 1.5));
   const total = Math.max(0, base + combo - minus);
   LIFE.money += total;
   LIFE.earnedToday += total;
@@ -2054,7 +2136,9 @@ function gameOver(){
   $('shiftTitle').textContent = S.endReason === 'lasttrain' ? '終電で上がり'
     : S.lives <= 0 ? '今日はもう上がってくれ' : '本日は上がり';
   $('pyHours').textContent = `勤務 ${hhmm(S.shiftStart)} 〜 ${hhmm(LIFE.clock)}（${hours.toFixed(1)}時間）`;
-  $('pyBase').textContent   = `処理 ${S.cleared}個 × ${yen(JOB.pay*rate)}`;
+  $('pyBase').textContent   = hourly
+    ? `時給 ${yen(JOB.hourly*rate)} × ${hours.toFixed(1)}時間`
+    : `処理 ${S.cleared}個 × ${yen(JOB.pay*rate)}`;
   $('pyBaseV').textContent  = yen(base);
   $('pyCombo').textContent  = `コンボ手当（最高 ${S.bestCombo}）`;
   $('pyComboV').textContent = yen(combo);
