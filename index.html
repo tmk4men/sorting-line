@@ -6,6 +6,7 @@
 <title>仕分けレーン</title>
 <meta name="description" content="レーンを流れる荷物から自分の担当番号だけを抜き取る、倉庫仕分けゲーム。">
 <meta name="theme-color" content="#11161c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2311161c'/%3E%3Cpath d='M6 10.5 16 6l10 4.5v11L16 26 6 21.5z' fill='%23c48d52' stroke='%23f0c489' stroke-width='1.4' stroke-linejoin='round'/%3E%3Cpath d='M6 10.5 16 15l10-4.5M16 15v11' stroke='%23f0c489' stroke-width='1.4' fill='none' stroke-linejoin='round'/%3E%3Crect x='11' y='12.4' width='10' height='6' rx='1' fill='%23f7f4ea' transform='rotate(-3 16 15.4)'/%3E%3C/svg%3E">
 <style>
   :root{
     --bg:#11161c;
@@ -90,7 +91,9 @@
     .lives svg{width:16px;height:16px}
     .rules{font-size:11.5px;padding:11px 12px;gap:8px}
     .btn{padding:14px 36px;font-size:15px}
-    .result .v{font-size:20px}
+    .result{grid-template-columns:repeat(2,1fr)}
+    .result div{padding:9px 4px}
+    .result .v{font-size:21px}
   }
 </style>
 </head>
@@ -166,6 +169,7 @@ const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
 
 function layout(){
+  const prevW = LAY.W || 0;
   const portrait = window.innerWidth < 720;
   if(portrait){
     Object.assign(LAY, {
@@ -203,12 +207,13 @@ function layout(){
   const maxW = Math.min(1020, Math.floor(avail * (LAY.W/LAY.H)), window.innerWidth - 16);
   document.getElementById('wrap').style.maxWidth = Math.max(300, maxW) + 'px';
 
-  // 進行中なら荷物を新レイアウトへ移す
+  // 進行中なら荷物を新レイアウトへ比例移動させる
+  const ratio = prevW ? LAY.W / prevW : 1;
   for(const b of S.boxes){
     b.y = LAY.laneY[b.lane];
     b.w = b.large ? LAY.lgW : LAY.boxW;
     b.h = b.large ? LAY.lgH : LAY.boxH;
-    b.x = Math.min(b.x, LAY.W + b.w);
+    b.x = Math.min(b.x * ratio, LAY.W + b.w);
   }
 }
 
@@ -277,7 +282,7 @@ const S = {
   boxes:[], flying:[], fx:[], texts:[], rings:[],
   score:0, dispScore:0, combo:0, bestCombo:0,
   cleared:0, clearedInLevel:0,
-  wrongPicks:0, dropped:0, reactSum:0, reactN:0,
+  wrongPicks:0, dropped:0, reactSum:0, reactN:0, sinceMine:0,
   level:1, lives:CFG.maxLives,
   codes:[], zones:{},
   shake:0, flash:0, flashColor:'255,90,77',
@@ -361,12 +366,17 @@ function spawn(){
   if(!free.length) return;
   const lane = pick(free);
 
-  const mine = Math.random() < CFG.mineRate;
+  // 担当荷物が続けて出ないとレベル進行がだれるので、空きが続いたら強制的に出す
+  const mine = S.sinceMine >= 4 || Math.random() < CFG.mineRate;
+  S.sinceMine = mine ? 0 : S.sinceMine + 1;
+
   let code;
   if(mine) code = pick(S.codes);
   else{
+    // 画面上に同じ番号が並ぶと読む負荷が単調になるので避ける
+    const avoid = S.codes.concat(S.boxes.map(b => b.code));
     const cr = Math.min(.82, .3 + S.level*.07);
-    code = Math.random() < cr ? confusable(pick(S.codes), S.codes) : newCode(S.codes);
+    code = Math.random() < cr ? confusable(pick(S.codes), avoid) : newCode(avoid);
   }
   const large = S.level >= 3 && Math.random() < .15;
   const express = !large && Math.random() < .12;
@@ -444,6 +454,8 @@ function levelUp(){
   const needChange = codeCountForLevel(S.level) !== S.codes.length || S.level % 3 === 1;
   if(needChange){
     assignCodes();
+    // 画面上の荷物も新しい担当で判定し直す（伝票の見た目と判定を一致させる）
+    for(const b of S.boxes) if(!b.judged) b.mine = S.codes.includes(b.code);
     S.banner = {text:'配 置 転 換', sub:'担当番号が変わった', t:0, color:'#ff9c3c'};
     SFX.change();
   }else{
@@ -457,12 +469,12 @@ function levelUp(){
 function hitTest(px, py){
   let found = null, bx = Infinity;
   for(const b of S.boxes){
-    if(b.judged) continue;
     if(px >= b.x-b.w/2 && px <= b.x+b.w/2 && py >= b.y-b.h/2 && py <= b.y+b.h/2 && b.x < bx){
       bx = b.x; found = b;   // 取り出し口に近い方を優先
     }
   }
-  return found;
+  // 判定済みの荷物は掴めない（奥の荷物をすり抜けて押せてしまうのを防ぐ）
+  return found && found.judged ? null : found;
 }
 
 cv.addEventListener('pointerdown', e => {
@@ -837,11 +849,20 @@ function drawBox(b, scale=1, rot=0, alpha=1){
     ctx.textAlign = 'center'; ctx.fillText('速達', 0, 1);
     ctx.restore();
   }
-  // 重量物
+  // 重量物：見落とさないよう下辺に注意帯を巻く
   if(b.large){
     ctx.save();
-    ctx.translate(-w/2+17, h/2-16);
-    ctx.strokeStyle = '#5d3a18'; ctx.lineWidth = 1.7;
+    rr(-w/2,-h/2,w,h,4); ctx.clip();
+    const by = h/2-15;
+    ctx.fillStyle = 'rgba(28,24,18,.85)'; ctx.fillRect(-w/2, by, w, 15);
+    ctx.strokeStyle = 'rgba(255,176,32,.9)'; ctx.lineWidth = 6;
+    for(let i=-15;i<w+15;i+=17){
+      ctx.beginPath(); ctx.moveTo(-w/2+i, by+16); ctx.lineTo(-w/2+i+16, by); ctx.stroke();
+    }
+    ctx.restore();
+    ctx.save();
+    ctx.translate(-w/2+18, -h/2+22);
+    ctx.strokeStyle = '#5d3a18'; ctx.lineWidth = 1.8;
     ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(10,8); ctx.lineTo(-10,8); ctx.closePath(); ctx.stroke();
     ctx.fillStyle = '#5d3a18'; ctx.font = '700 10px "Yu Gothic UI", sans-serif'; ctx.textAlign='center';
     ctx.fillText('重', 0, 3);
@@ -965,13 +986,15 @@ function loop(now){
 // ============================================================
 //  進行
 // ============================================================
+let overTimer = null;
 function start(){
   try{ ac().resume(); }catch(e){}
+  clearTimeout(overTimer); overTimer = null;
   S.paused = false; S.running = true;
   S.boxes = []; S.flying = []; S.fx = []; S.texts = []; S.rings = [];
   S.score = 0; S.dispScore = 0; S.combo = 0; S.bestCombo = 0;
   S.cleared = 0; S.clearedInLevel = 0;
-  S.wrongPicks = 0; S.dropped = 0; S.reactSum = 0; S.reactN = 0;
+  S.wrongPicks = 0; S.dropped = 0; S.reactSum = 0; S.reactN = 0; S.sinceMine = 0;
   S.level = 1; S.lives = CFG.maxLives;
   S.spawnTimer = 700; S.banner = null;
   S.laneAlert = [0,0,0]; S.chuteAlert = 0;
@@ -997,7 +1020,8 @@ function gameOver(){
   $('rReact').textContent = S.reactN ? (S.reactSum/S.reactN).toFixed(2) + 's' : '-';
   $('overTitle').textContent = isBest ? '自己ベスト更新' : '本日は上がり';
   $('rBest').textContent = isBest ? `新記録　${S.score}` : `自己ベスト　${Math.max(b, S.score)}`;
-  setTimeout(()=> $('ovOver').classList.remove('hide'), 750);
+  clearTimeout(overTimer);
+  overTimer = setTimeout(()=> $('ovOver').classList.remove('hide'), 750);
 }
 
 $('btnStart').addEventListener('click', start);
