@@ -407,9 +407,9 @@ const JOBS = [
   { id:'fruit', name:'青果市場 選果ライン', short:'選果', pay:98, lives:4, stamina:30,
     speed:0.88, spawnMul:0.94, rule:'rotten', minLv:1,
     desc:'傷んだ果物だけを弾く。番号は読まなくていいが、傷みは見落としやすい。' },
-  { id:'tech', name:'精密機器 出荷倉庫', short:'精密', pay:215, lives:2, stamina:48,
-    speed:1.22, spawnMul:1.06, rule:'number', fragile:true, minLv:3,
-    desc:'担当番号を抜く。全部が取扱注意で2回掴む。ミスは2回まで。時給は一番いい。' },
+  { id:'waste', name:'クリーンセンター 分別ライン', short:'分別', pay:190, lives:3, stamina:46,
+    speed:1.10, spawnMul:0.90, rule:'sort3', minLv:3,
+    desc:'レーンごとに回収する資源が違う（1カン／2ビン／3ペット）。自分が立っているレーンの資源だけを取る。' },
 ];
 
 const CFG = {
@@ -622,8 +622,18 @@ function spawn(){
   S.sinceMine = mine ? 0 : S.sinceMine + 1;
 
   const rotten = JOB && JOB.rule === 'rotten';
-  let code = '', rot = 0;
-  if(rotten){
+  const sort3  = JOB && JOB.rule === 'sort3';
+  let code = '', rot = 0, type = -1;
+  if(sort3){
+    // レーンごとに回収する資源が決まっている。lane と type が一致するものだけが自分の担当
+    if(mine) type = lane;
+    else{
+      const junkRate = Math.min(.34, .16 + S.level*.02);
+      if(Math.random() < junkRate) type = 3;                       // 一般ごみ（誰も取らない）
+      else{ do { type = rnd(3); } while(type === lane); }          // 隣のカゴ行き
+    }
+    code = String(100 + rnd(900));
+  }else if(rotten){
     // 傷み具合。0.5以上が「弾くべき品」。レベルが上がるほど境目が際どくなる
     const edge = Math.max(.06, .3 - S.level*.03);
     rot = mine ? .5 + edge + Math.random()*(.45-edge)
@@ -637,16 +647,18 @@ function spawn(){
     const cr = Math.min(.82, .3 + S.level*.07);
     code = Math.random() < cr ? confusable(pick(S.codes), avoid) : newCode(avoid);
   }
-  const large   = !rotten && S.level >= 3 && Math.random() < .15;
-  const express = !rotten && !large && Math.random() < .12;
+  const plain   = !rotten && !sort3;
+  const large   = plain && S.level >= 3 && Math.random() < .15;
+  const express = plain && !large && Math.random() < .12;
   const fragile = !!(JOB && JOB.fragile);
 
   S.boxes.push({
-    id:++seq, lane, code, mine, large, express, rot, fragile,
+    id:++seq, lane, code, mine, large, express, rot, type, fragile,
+    tone: rnd(2),
     x: LAY.W + 110, y: LAY.laneY[lane],
     w: large ? LAY.lgW : LAY.boxW,
     h: large ? LAY.lgH : LAY.boxH,
-    kind: rotten ? 'crate' : 'box',
+    kind: rotten ? 'crate' : sort3 ? 'waste' : 'box',
     tilt: (Math.random()-.5)*.10,
     tape: .36 + Math.random()*.28,
     hits:0, judged:false, hitFx:0, wrongFx:0,
@@ -691,7 +703,13 @@ const ring = (x,y,color='255,255,255') => S.rings.push({x,y,t:0,life:.4,color});
 // ============================================================
 function tryPick(b){
   if(!b || b.judged) return;
-  if(b.mine){
+  // 分別ラインは「立っているレーンの資源かどうか」で判定する
+  let ok = b.mine, reason = '誤仕分け';
+  if(JOB && JOB.rule === 'sort3'){
+    ok = b.type === S.hero.lane;
+    reason = b.type === 3 ? '一般ごみ' : 'カゴ違い';
+  }
+  if(ok){
     b.hits++;
     if(b.hits < ((b.large || b.fragile) ? 2 : 1)){
       b.hitFx = 1; SFX.half();
@@ -718,7 +736,7 @@ function tryPick(b){
     updateHUD();
   }else{
     b.judged = true; b.wrongFx = 1; S.wrongPicks++;
-    damage('誤仕分け', b.x, b.y);
+    damage(reason, b.x, b.y);
   }
 }
 
@@ -1107,17 +1125,29 @@ function drawChute(){
   ctx.beginPath(); ctx.moveTo(chuteW-6, boardH); ctx.lineTo(chuteW-6, floorY); ctx.stroke();
   ctx.setLineDash([]);
 
+  const sort3 = JOB && JOB.rule === 'sort3';
   for(let l=0;l<LANES;l++){
     const cy = LAY.laneY[l], al = S.laneAlert[l];
     ctx.save();
     ctx.translate(chuteW/2+4, cy);
+    const hh = sort3 ? 33 : 21;
     ctx.fillStyle = al>0 ? `rgba(255,90,77,${.2+al*.5})` : 'rgba(255,255,255,.045)';
-    rr(-17,-21,34,42,6); ctx.fill();
+    rr(-19,-hh,38,hh*2,6); ctx.fill();
     ctx.strokeStyle = al>0 ? `rgba(255,120,110,${.5+al*.5})` : 'rgba(255,176,32,.5)';
-    ctx.lineWidth = 1.4; rr(-17,-21,34,42,6); ctx.stroke();
+    ctx.lineWidth = 1.4; rr(-19,-hh,38,hh*2,6); ctx.stroke();
     ctx.fillStyle = al>0 ? '#ff9a90' : '#ffb020';
-    ctx.font = '800 21px Consolas, monospace'; ctx.textAlign = 'center';
-    ctx.fillText(String(l+1), 0, 1);
+    ctx.textAlign = 'center';
+    if(sort3){
+      // このレーンで回収する資源
+      ctx.font = '800 13px Consolas, monospace';
+      ctx.fillText(String(l+1), 0, -21);
+      ctx.save(); ctx.translate(0, 6); ctx.globalAlpha = .95;
+      drawWasteIcon(l, 40, 0);
+      ctx.restore();
+    }else{
+      ctx.font = '800 21px Consolas, monospace';
+      ctx.fillText(String(l+1), 0, 1);
+    }
     ctx.restore();
   }
   ctx.restore();
@@ -1174,8 +1204,27 @@ function drawBoard(){
     ctx.restore();
   }
 
+  // 分別ラインは「レーン＝資源」の対応表を出す
+  if(JOB && JOB.rule === 'sort3'){
+    const names = ['カン','ビン','ペット'];
+    const cw = 232, ch = cardH, cy = cardY;
+    ctx.save();
+    ctx.translate(x + cw/2, cy + ch/2);
+    ctx.fillStyle = 'rgba(0,0,0,.45)'; rr(-cw/2+3,-ch/2+5,cw,ch,3); ctx.fill();
+    ctx.fillStyle = '#f6f3e8'; rr(-cw/2,-ch/2,cw,ch,3); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.2)'; ctx.lineWidth = 1; rr(-cw/2,-ch/2,cw,ch,3); ctx.stroke();
+    for(let i=0;i<3;i++){
+      const px = -cw/2 + 38 + i*72;
+      ctx.save(); ctx.translate(px, -2); drawWasteIcon(i, 38, 0); ctx.restore();
+      ctx.fillStyle = '#15181d'; ctx.font = '800 12px "Yu Gothic UI", sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(`${i+1}　${names[i]}`, px, ch/2-10);
+      if(i < 2){ ctx.fillStyle = 'rgba(0,0,0,.12)'; ctx.fillRect(px+36, -ch/2+6, 1, ch-12); }
+    }
+    ctx.restore();
+  }
+
   const pulse = S.boardPulse > 0 ? (Math.sin(S.t*22)*.5+.5) * Math.min(1, S.boardPulse*1.6) : 0;
-  for(const c of (JOB && JOB.rule === 'rotten' ? [] : S.codes)){
+  for(const c of (JOB && JOB.rule !== 'number' ? [] : S.codes)){
     ctx.save();
     ctx.translate(x + cardW/2, cardY + cardH/2);
     ctx.rotate(-.012);
@@ -1285,7 +1334,8 @@ function drawCage(){
   ctx.beginPath(); ctx.arc(-w/2+12, h/2+5, 5, 0, Math.PI*2); ctx.fill();
   ctx.beginPath(); ctx.arc(w/2-12, h/2+5, 5, 0, Math.PI*2); ctx.fill();
   // 行先札
-  const label = (JOB && JOB.rule === 'rotten') ? '傷み品' : (S.codes.join('/') || '---');
+  const label = !JOB || JOB.rule === 'number' ? (S.codes.join('/') || '---')
+              : JOB.rule === 'rotten' ? '傷み品' : '分別';
   const lf = label.length >= 11 ? 9 : label.length >= 7 ? 10.5 : 12;
   const lw = label.length >= 11 ? 86 : label.length >= 7 ? 66 : 52;
   ctx.fillStyle = '#f6f3e8'; rr(-lw/2, -h/2-18, lw, 16, 2); ctx.fill();
@@ -1344,6 +1394,65 @@ function drawCrate(b){
   ctx.strokeRect(-w/2+2.5, h/2-12.5, w-5, 10);
 }
 
+/** 資源物のアイコン（0=カン 1=ビン 2=ペット 3=一般ごみ）。scaleは高さの基準 */
+function drawWasteIcon(type, s, tone=0){
+  ctx.save();
+  ctx.scale(s/60, s/60);        // 60px基準で設計
+  if(type === 0){               // アルミ缶
+    const g = ctx.createLinearGradient(-13,0,13,0);
+    g.addColorStop(0,'#8b96a3'); g.addColorStop(.35,'#e8eef4'); g.addColorStop(.7,'#aab6c2'); g.addColorStop(1,'#7d8894');
+    ctx.fillStyle = g; rr(-13,-24,26,48,4); ctx.fill();
+    ctx.fillStyle = tone ? '#2f7fbd' : '#c9483c'; ctx.fillRect(-13,-8,26,13);
+    ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(-13,-6,26,2.5);
+    ctx.fillStyle = '#c3ccd6'; rr(-13,-26,26,5,2); ctx.fill();
+    ctx.strokeStyle = 'rgba(40,50,60,.5)'; ctx.lineWidth = 1.4; rr(-13,-24,26,48,4); ctx.stroke();
+  }else if(type === 1){         // ガラス瓶
+    const g = ctx.createLinearGradient(-11,0,11,0);
+    const base = tone ? ['#3f6b3a','#6fae63','#2f5a2c'] : ['#5c3a1c','#a97440','#4a2e14'];
+    g.addColorStop(0,base[0]); g.addColorStop(.4,base[1]); g.addColorStop(1,base[2]);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-5,-27); ctx.lineTo(5,-27); ctx.lineTo(5,-13);
+    ctx.quadraticCurveTo(12,-8,12,2); ctx.lineTo(12,22);
+    ctx.quadraticCurveTo(12,26,8,26); ctx.lineTo(-8,26);
+    ctx.quadraticCurveTo(-12,26,-12,22); ctx.lineTo(-12,2);
+    ctx.quadraticCurveTo(-12,-8,-5,-13); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.28)'; ctx.fillRect(-8,-6,3,26);
+    ctx.fillStyle = '#efe7d6'; ctx.fillRect(-11,4,22,12);   // ラベル
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(-8,8,16,1.6); ctx.fillRect(-8,12,11,1.6);
+    ctx.fillStyle = tone ? '#2f5a2c' : '#3a2410'; rr(-6,-29,12,4,1.5); ctx.fill();
+  }else if(type === 2){         // ペットボトル
+    ctx.fillStyle = 'rgba(226,242,250,.85)';
+    ctx.beginPath();
+    ctx.moveTo(-5,-25); ctx.lineTo(5,-25); ctx.lineTo(5,-16);
+    ctx.quadraticCurveTo(11,-11,11,-3); ctx.lineTo(11,21);
+    ctx.quadraticCurveTo(11,26,6,26); ctx.lineTo(-6,26);
+    ctx.quadraticCurveTo(-11,26,-11,21); ctx.lineTo(-11,-3);
+    ctx.quadraticCurveTo(-11,-11,-5,-16); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,170,195,.75)'; ctx.lineWidth = 1.3; ctx.stroke();
+    ctx.strokeStyle = 'rgba(150,195,215,.8)'; ctx.lineWidth = 1.6;   // リブ
+    for(let y=-2;y<=14;y+=6){ ctx.beginPath(); ctx.moveTo(-10,y); ctx.lineTo(10,y); ctx.stroke(); }
+    ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillRect(-7,-10,3,30);
+    ctx.fillStyle = tone ? '#2f7fbd' : '#2fa3a0'; rr(-6,-30,12,6,2); ctx.fill();  // キャップ
+    ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(-9,2,18,9);              // ラベル
+    ctx.fillStyle = 'rgba(60,140,170,.6)'; ctx.fillRect(-7,5,14,1.5);
+  }else{                        // 一般ごみ（黒い袋）
+    const g = ctx.createRadialGradient(-6,-8,3,0,0,30);
+    g.addColorStop(0,'#4c5058'); g.addColorStop(1,'#22262c');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(0,-26); ctx.quadraticCurveTo(-8,-20,-14,-6);
+    ctx.quadraticCurveTo(-20,10,-14,20); ctx.quadraticCurveTo(-6,28,0,27);
+    ctx.quadraticCurveTo(8,28,14,20); ctx.quadraticCurveTo(20,10,14,-6);
+    ctx.quadraticCurveTo(8,-20,0,-26); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.14)'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(-6,-4); ctx.quadraticCurveTo(0,6,-2,18); ctx.stroke();
+    ctx.fillStyle = '#3a3f47';                     // 縛り口
+    ctx.beginPath(); ctx.moveTo(-7,-24); ctx.lineTo(0,-32); ctx.lineTo(7,-24); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawBox(b, scale=1, rot=0, alpha=1){
   const w = b.w, h = b.h;
   ctx.save();
@@ -1352,6 +1461,24 @@ function drawBox(b, scale=1, rot=0, alpha=1){
   ctx.rotate(rot);
   ctx.scale(scale, scale);
   if(b.wrongFx > 0) ctx.translate(Math.sin(b.wrongFx*42)*5, 0);
+
+  if(b.kind === 'waste'){
+    ctx.fillStyle = 'rgba(0,0,0,.42)';
+    ctx.beginPath(); ctx.ellipse(3, h/2+4, w*.30, 7, 0, 0, Math.PI*2); ctx.fill();
+    drawWasteIcon(b.type, h*1.02, b.tone);
+    if(b.hitFx > 0){
+      ctx.fillStyle = `rgba(255,255,255,${b.hitFx*.3})`;
+      ctx.beginPath(); ctx.arc(0,0,h*.46,0,Math.PI*2); ctx.fill();
+    }
+    if(b.wrongFx > 0){
+      ctx.strokeStyle = `rgba(255,90,80,${b.wrongFx})`; ctx.lineWidth = 5; ctx.lineCap='round';
+      const r2 = h*.3;
+      ctx.beginPath(); ctx.moveTo(-r2,-r2); ctx.lineTo(r2,r2); ctx.moveTo(r2,-r2); ctx.lineTo(-r2,r2); ctx.stroke();
+      ctx.lineCap='butt';
+    }
+    ctx.restore();
+    return;
+  }
 
   if(b.kind === 'crate'){
     drawCrate(b);
@@ -1725,10 +1852,11 @@ const LIFE = {
 const RULES = {
   days:30, maxShifts:2,
   food:1200, cheapFood:600,
-  rentDay:25, rent:55000,
+  rentEvery:7, rent:14000,     // 週払いの家賃
   utilDay:20, util:8400,
   goal:100000,
 };
+const isRentDay = d => d % RULES.rentEvery === 0;
 const xpNeed = lv => 130 + (lv-1)*110;
 const wageRate = () => 1 + (LIFE.lv-1)*0.09;
 
@@ -1855,8 +1983,9 @@ function renderHome(){
 
   const parts = [];
   if(LIFE.event) parts.push(`<b>できごと</b>　${LIFE.event}`);
-  if(LIFE.day === RULES.rentDay) parts.push(`<b>今日は家賃の支払日</b>　${yen(RULES.rent)}`);
-  else if(LIFE.day === RULES.utilDay) parts.push(`<b>今日は光熱費の引き落とし</b>　${yen(RULES.util)}`);
+  if(isRentDay(LIFE.day)) parts.push(`<b>今夜は家賃の支払い</b>　${yen(RULES.rent)}`);
+  else if(LIFE.day === RULES.utilDay) parts.push(`<b>今夜は光熱費の引き落とし</b>　${yen(RULES.util)}`);
+  else parts.push(`次の家賃まで <b>${RULES.rentEvery - LIFE.day % RULES.rentEvery}日</b>`);
   parts.push(`残り <b>${RULES.days - LIFE.day + 1}日</b>　目標 <b>${yen(RULES.goal)}</b>`);
   $('hNotice').innerHTML = parts.join('　／　');
   $('btnSleep').textContent = LIFE.sick ? '横 に な る'
@@ -1990,7 +2119,7 @@ function doNight(n, st, he){
   // 精算
   const food = Math.max(300, (LIFE.cheapMeal ? RULES.cheapFood : RULES.food) - discount);
   let rent = 0, util = 0;
-  if(LIFE.day === RULES.rentDay) rent = RULES.rent;
+  if(isRentDay(LIFE.day)) rent = RULES.rent;
   if(LIFE.day === RULES.utilDay) util = RULES.util;
   LIFE.money -= food + rent + util;
 
@@ -1999,8 +2128,9 @@ function doNight(n, st, he){
   $('dFood').textContent = '-' + yen(food);
   $('dRentRow').classList.toggle('hide', !(rent || util));
   if(rent || util){
-    $('dRentRow').querySelector('span').textContent = rent ? '家賃' : '光熱費';
-    $('dRent').textContent = '-' + yen(rent || util);
+    $('dRentRow').querySelector('span').textContent =
+      rent && util ? '家賃・光熱費' : rent ? `家賃（${Math.ceil(LIFE.day/RULES.rentEvery)}週目）` : '光熱費';
+    $('dRent').textContent = '-' + yen(rent + util);
   }
   $('dMoney').textContent = yen(LIFE.money);
   $('dMoney').style.color = LIFE.money < 0 ? '#b8322a' : '';
