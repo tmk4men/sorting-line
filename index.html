@@ -10,12 +10,24 @@
 <style>
   :root{
     --bg:#0e1218; --panel:#182029; --panel2:#111820; --line:#2a3744;
-    --text:#eef3f8; --sub:#8698ab; --accent:#ffb020; --accent2:#ffd479;
+    --text:#eef3f8; --sub:#95a8bb; --accent:#ffb020; --accent2:#ffd479;
     --ok:#3fd18b; --ng:#ff5a4d; --purple:#c78bff;
+    /* ステータスの色（ホームのゲージと同じ対応） */
+    --st-stam:#ffd479; --st-health:#5fd6a0; --st-mood:#c9a0ff; --st-minus:#ff9a90;
     --r:16px;
     --safe-b:env(safe-area-inset-bottom,0px);
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+
+  /* ---------- 日本語の折り返し ---------- */
+  /* 単語（文節）の途中で切らない。対応ブラウザでは文節単位で折る */
+  .sheet,.note,.card2,.act,.modal,.chip,.toast,.pill{line-break:strict;word-break:normal;overflow-wrap:break-word}
+  @supports (word-break:auto-phrase){
+    .cd,.td,.note,.endtext,.best,.lock,.ct{word-break:auto-phrase}
+  }
+  .brand,.tn,.cn,.title,.note,.cd,.td{text-wrap:pretty}
+  /* 数値・単位は途中で折らない */
+  .cw,.ct>span,.chip .v,.pill .v,.note b,.prow b,.result .v,.assign,.nw{white-space:nowrap}
   html,body{height:100%;overflow:hidden}
   body{
     background:#05070a;color:var(--text);
@@ -29,25 +41,26 @@
   /* ---------- HUD ---------- */
   .hud{
     position:absolute;top:0;left:0;right:0;z-index:6;
-    display:flex;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top,0px)) 56px 8px 10px;
+    display:flex;align-items:center;gap:6px;padding:calc(8px + env(safe-area-inset-top,0px)) 50px 8px 10px;
     background:linear-gradient(180deg,rgba(6,9,13,.82),rgba(6,9,13,0));
     pointer-events:none;visibility:hidden;              /* 高さを測れるよう display は保つ */
   }
   body.playing .hud{visibility:visible}
   .pill{
-    display:flex;flex-direction:column;gap:1px;padding:6px 12px;border-radius:11px;
+    display:flex;flex-direction:column;gap:1px;padding:6px 10px;border-radius:11px;
     background:rgba(17,23,30,.72);border:1px solid rgba(255,255,255,.06);
-    backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);min-width:0;
+    backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);min-width:0;flex:0 0 auto;
   }
-  .pill .k{font-size:8.5px;letter-spacing:.22em;color:var(--sub);font-weight:800}
-  .pill .v{font:800 20px/1 "Consolas","SF Mono",monospace;letter-spacing:.02em;white-space:nowrap}
+  .pill .k{font-size:8px;letter-spacing:.16em;color:var(--sub);font-weight:800;white-space:nowrap}
+  .pill .v{font:800 19px/1 "Consolas","SF Mono",monospace;letter-spacing:.02em;white-space:nowrap}
   .pill .v .u{font-size:12px;color:var(--sub);margin-left:4px;letter-spacing:0}
   .pill .v.hot .u{color:var(--accent)}
   .pill.grow{flex:1}
   .hud .clock{margin-left:auto}
   .missrow{display:flex;align-items:center;gap:6px}
   .lives{display:flex;gap:4px;align-items:center}
-  .lives svg{width:17px;height:17px;transition:opacity .25s,transform .25s}
+  .lives svg{width:16px;height:16px;transition:opacity .25s,transform .25s}
+  @media (max-width:390px){ .lives{display:none} .pill .v{font-size:17px} }
   .lives svg.lost{opacity:.16;transform:scale(.78) rotate(-14deg)}
   .missrow.danger .v,.missrow.danger .u{color:var(--ng)}
   .missrow.danger .v{animation:pulse .9s ease-in-out infinite}
@@ -67,31 +80,49 @@
   .overlay{position:absolute;inset:0;z-index:10;display:flex;animation:fade .3s ease}
   .hide{display:none!important}
   @keyframes fade{from{opacity:0}to{opacity:1}}
-  .scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,8,12,.34) 0%,rgba(5,8,12,.2) 30%,rgba(3,5,8,.72) 100%)}
+  /* 上下を締めて文字を必ず読ませる */
+  .scrim{position:absolute;inset:0;background:
+    linear-gradient(180deg,rgba(5,8,12,.86) 0%,rgba(5,8,12,.42) 18%,rgba(5,8,12,.24) 44%,rgba(3,5,8,.80) 88%,rgba(3,5,8,.9) 100%)}
   .sheet{position:relative;z-index:1;width:100%;height:100%;display:flex;flex-direction:column;
          padding:calc(14px + env(safe-area-inset-top,0px)) 16px calc(16px + var(--safe-b));overflow:auto}
   .center{align-items:center;justify-content:center}
 
   /* header block */
   .head{display:flex;flex-direction:column;gap:12px;flex:0 0 auto}
-  .brand{font-size:clamp(20px,4.4vw,30px);font-weight:900;letter-spacing:.09em;line-height:1.1;
-         text-shadow:0 3px 12px rgba(0,0,0,.85)}
-  .brand small{display:block;font-size:9px;letter-spacing:.5em;color:var(--accent);font-weight:800;margin-bottom:4px}
+  .brand{font-size:clamp(21px,4.6vw,31px);font-weight:900;letter-spacing:.045em;line-height:1.12;
+         text-shadow:0 3px 14px rgba(0,0,0,.9)}
+  .brand small{display:flex;align-items:center;gap:8px;font-size:9.5px;letter-spacing:.34em;
+               color:var(--accent);font-weight:800;margin-bottom:6px}
+  .brand small::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(255,176,32,.55),rgba(255,176,32,0))}
 
-  /* status strip */
-  .status{display:flex;flex-wrap:wrap;gap:7px}
-  .chip{display:flex;flex-direction:column;gap:3px;padding:8px 13px;border-radius:12px;
-        background:rgba(15,21,28,.78);border:1px solid rgba(255,255,255,.05);backdrop-filter:blur(5px)}
-  .chip .k{font-size:8.5px;letter-spacing:.16em;color:var(--sub);font-weight:800}
-  .chip .v{font:800 17px/1 "Consolas",monospace}
-  .chip .v.money{color:var(--accent)}
-  .chip.grow{flex:1;min-width:150px}
-  .gauges{display:flex;flex-direction:column;gap:5px;justify-content:center}
-  .gauge{display:flex;align-items:center;gap:7px}
-  .gauge .gk{font-size:9.5px;color:var(--sub);font-weight:800;width:30px}
-  .gauge .gb{flex:1;height:7px;border-radius:4px;background:rgba(255,255,255,.09);overflow:hidden}
-  .gauge .gb i{display:block;height:100%;width:0;transition:width .4s,background .3s;border-radius:4px}
-  .gauge .gv{font:800 12px/1 "Consolas",monospace;width:26px;text-align:right;color:var(--text)}
+  /* status panel */
+  .status{display:flex;flex-direction:column;gap:8px;padding:11px 14px 10px;border-radius:16px;
+          background:linear-gradient(165deg,rgba(20,27,35,.9),rgba(10,15,20,.92));
+          border:1px solid rgba(255,255,255,.07);backdrop-filter:blur(8px);
+          box-shadow:0 14px 34px rgba(0,0,0,.45)}
+  .status .hero{display:flex;align-items:flex-end;justify-content:space-between;gap:12px 18px;flex-wrap:wrap}
+  .status .money{display:flex;flex-direction:column;gap:4px;min-width:0}
+  .status .money .k{font-size:9px;letter-spacing:.2em;color:var(--sub);font-weight:800}
+  .status .money .v{font:900 clamp(26px,7.4vw,34px)/1 "Consolas",monospace;color:var(--accent);
+                    letter-spacing:-.01em;text-shadow:0 2px 10px rgba(255,176,32,.18)}
+  .status .meta{display:flex;gap:16px;margin-left:auto}
+  .status .meta span{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+  .status .meta i{font-style:normal;font-size:8.5px;letter-spacing:.16em;color:var(--sub);font-weight:800}
+  .status .meta b{font:800 16px/1 "Consolas",monospace}
+  .gauges{display:flex;flex-direction:column;gap:5px}
+  .gauge{display:flex;align-items:center;gap:9px}
+  .gauge .gk{font-size:10px;color:var(--sub);font-weight:800;width:28px;letter-spacing:.04em}
+  .gauge .gb,.lvrow .gb{flex:1;height:8px;border-radius:5px;background:rgba(255,255,255,.08);
+                        box-shadow:inset 0 1px 2px rgba(0,0,0,.5);overflow:hidden;min-width:40px}
+  .gauge .gb i,.lvrow .gb i{display:block;height:100%;width:0;transition:width .45s cubic-bezier(.4,0,.2,1),background .3s;border-radius:5px}
+  .gauge .gv{font:800 12.5px/1 "Consolas",monospace;width:26px;text-align:right;color:var(--text)}
+  .lvrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:10.5px;color:var(--sub);
+         border-top:1px solid rgba(255,255,255,.07);padding-top:8px}
+  .lvrow .gb{max-width:120px;height:6px}
+  .lvrow .lv{font:800 11px/1 "Consolas",monospace;color:#9ae6bd;white-space:nowrap}
+  .lvrow .lv b{font-size:14px;margin-left:2px}
+  .lvrow .rate{white-space:nowrap}.lvrow .rate b{color:var(--accent2);font-weight:800}
+  .lvrow .rent{margin-left:auto;text-align:right}
 
   .spacer{flex:1 1 auto;min-height:10px}
 
@@ -111,14 +142,39 @@
   .act .ico{flex:0 0 auto;width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;
             background:radial-gradient(circle at 38% 30%,rgba(255,208,120,.22),rgba(255,176,32,.06));border:1px solid rgba(255,176,32,.25)}
   .act .ico svg{width:26px;height:26px;stroke:var(--accent2);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-  .act .tx{display:flex;flex-direction:column;gap:3px;min-width:0}
-  .act .tn{font-size:17px;font-weight:900;letter-spacing:.04em}
+  .act .tx{display:flex;flex-direction:column;gap:4px;min-width:0}
+  .act .tn{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:17px;font-weight:900;letter-spacing:.04em}
   .act .td{font-size:11px;color:var(--sub);line-height:1.4}
   .act.wide{grid-column:1 / -1}
-  .act .badge{position:absolute;right:12px;top:11px;font-size:10px;font-weight:800;color:#ff9a90;letter-spacing:.05em}
+  /* 主導線（出勤）は一段強く */
+  .act.primary{background:linear-gradient(160deg,rgba(72,54,20,.96),rgba(28,21,10,.98));border-color:rgba(255,176,32,.42)}
+  .act.primary::before{width:5px;box-shadow:0 0 16px rgba(255,176,32,.55)}
+  .act.primary .ico{background:radial-gradient(circle at 38% 30%,rgba(255,208,120,.38),rgba(255,176,32,.12));
+                    border-color:rgba(255,176,32,.5)}
+  .act.primary .tn{color:#ffe3ac}
+  .act .badge{font-size:10px;font-weight:800;letter-spacing:.06em;
+              color:#ffd479;background:rgba(255,176,32,.14);border:1px solid rgba(255,176,32,.34);
+              border-radius:999px;padding:3px 8px;white-space:nowrap}
+  .act[disabled] .badge{color:#ff9a90;background:rgba(255,90,77,.12);border-color:rgba(255,90,77,.34)}
+
+  /* 下部の情報行 */
+  .notice{display:flex;flex-wrap:wrap;gap:7px 8px;align-items:center}
+  .notice .seg{display:inline-flex;align-items:baseline;gap:5px;white-space:nowrap;
+               background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.06);
+               border-radius:9px;padding:3px 9px}
+  .notice .seg.warn{color:#ff9a90;background:rgba(255,90,77,.1);border-color:rgba(255,90,77,.28)}
+  .notice .seg em{font-style:normal;font-size:10px;letter-spacing:.1em;color:var(--sub);font-weight:800}
+  .notice .seg b{color:var(--accent);font-weight:800}
+  .notice .seg.ev{white-space:normal;flex:1 1 100%;background:none;border:none;padding:0}
 
   /* job / choice cards */
   .list{display:flex;flex-direction:column;gap:10px;flex:0 0 auto;padding-bottom:4px}
+  .list .card2{animation:cardIn .3s cubic-bezier(.2,.8,.3,1) backwards}
+  .list .card2:nth-child(2){animation-delay:.045s}.list .card2:nth-child(3){animation-delay:.09s}
+  .list .card2:nth-child(4){animation-delay:.135s}.list .card2:nth-child(5){animation-delay:.18s}
+  .list .card2:nth-child(6){animation-delay:.225s}
+  @keyframes cardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){ .list .card2{animation:none} }
   .card2{
     position:relative;text-align:left;cursor:pointer;color:var(--text);font-family:inherit;
     background:linear-gradient(165deg,rgba(28,37,47,.97),rgba(14,20,26,.98));
@@ -127,24 +183,38 @@
     display:flex;flex-direction:column;gap:7px;
   }
   .card2::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
+  .card2::after{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:rgba(255,255,255,.07)}
   .card2.c-reg::before{background:#5bd6c4}.card2.c-waste::before{background:#8fd15b}
-  .card2:hover{transform:translateY(-2px);border-color:#455a6d}
-  .card2:active{transform:translateY(0)}
-  .card2[disabled]{opacity:.42;cursor:not-allowed;filter:grayscale(.35)}
+  .card2:hover:not([disabled]){transform:translateY(-2px);border-color:#4a627a;box-shadow:0 14px 32px rgba(0,0,0,.5)}
+  .card2:active:not([disabled]){transform:translateY(1px);box-shadow:0 6px 16px rgba(0,0,0,.45)}
+  .card2[disabled]{opacity:.46;cursor:not-allowed;filter:grayscale(.3)}
+  .card2.owned{opacity:.82;filter:none}                      /* 購入済みは沈ませすぎない */
+  .card2.owned::before{background:#5bd6c4}                   /* 買える/買った の判別を色で */
+  .card2.owned .cn{padding-right:74px}
+  .card2 .badge2{position:absolute;right:11px;top:11px;font-size:10px;font-weight:800;letter-spacing:.06em;
+                 color:#7fe0cd;background:rgba(91,214,196,.12);border:1px solid rgba(91,214,196,.35);
+                 border-radius:999px;padding:3px 9px;white-space:nowrap}
   .card2 .cn{font-size:15.5px;font-weight:900;letter-spacing:.02em;display:flex;align-items:center;gap:9px}
   .card2 .cn .ci{width:36px;height:36px;flex:0 0 auto;border-radius:11px;background:rgba(255,255,255,.055);
                  border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center}
   .card2 .cn .ci svg{width:25px;height:25px}
-  .card2 .cd{font-size:11.5px;color:var(--sub);line-height:1.55}
-  .card2 .cm{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
-  .card2 .cw{font:800 18px/1 "Consolas",monospace;color:var(--accent)}
+  .card2 .cd{font-size:12.5px;color:var(--sub);line-height:1.6}
+  /* 金額は左、コスト系は右。折り返したら右列は次の行へ */
+  .card2 .cm{display:flex;justify-content:space-between;align-items:baseline;gap:6px 14px;flex-wrap:wrap}
+  .card2 .cw{font:800 19px/1 "Consolas",monospace;color:var(--accent)}
   .card2 .cw .u{font-size:11px;color:var(--sub);margin-left:2px}
-  .card2 .ct{font-size:10.5px;color:var(--sub)}
-  .card2 .ct b{color:#ff8f84}
-  .card2 .lock{font-size:10.5px;color:#ff9a90;letter-spacing:.05em;font-weight:700}
+  .card2 .cw.mood{font-family:inherit;font-size:13px;color:var(--sub);letter-spacing:.04em}
+  .card2 .cw.mood b{font:900 21px/1 "Consolas",monospace;color:var(--st-mood);margin-left:5px}
+  .card2 .ct{display:flex;gap:4px 12px;flex-wrap:wrap;justify-content:flex-end;
+             font-size:11.5px;color:var(--sub);margin-left:auto}
+  .card2 .ct b{font-weight:800}
+  .card2 .ct .v{font-weight:800;font-family:"Consolas",monospace}
+  .s-stam{color:var(--st-stam)}.s-health{color:var(--st-health)}.s-mood{color:var(--st-mood)}
+  .s-minus{color:var(--st-minus)}.s-time{color:var(--sub)}
+  .card2 .lock{font-size:11.5px;color:#ff9a90;letter-spacing:.05em;font-weight:700}
 
   .foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;flex:0 0 auto;margin-top:12px}
-  .note{font-size:11.5px;color:#9fb1c3;line-height:1.5;background:rgba(9,13,18,.72);border-radius:10px;padding:8px 12px;backdrop-filter:blur(4px)}
+  .note{font-size:12.5px;color:#b0c1d2;line-height:1.55;background:rgba(9,13,18,.72);border-radius:10px;padding:9px 13px;backdrop-filter:blur(4px)}
   .note b{color:var(--accent);font-weight:800}
 
   .btn{
@@ -169,11 +239,20 @@
   .prow.minus b{color:#b8322a}
   .prow.total{border-bottom:none;border-top:2px solid rgba(0,0,0,.6);margin-top:4px;padding-top:9px;font-size:15px}
   .prow.total b{font-size:21px}
+  .prow.stat{border-bottom:none;border-top:1px dashed rgba(0,0,0,.18);margin-top:6px;padding-top:8px;font-size:11px}
+  .prow.stat b{font-weight:700;letter-spacing:.02em}
+  .prow.stat i{font-style:normal;font-weight:800}
+  .prow.stat i.p{color:#1d7a4f}.prow.stat i.m{color:#b8322a}
   .result{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;width:100%;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
   .result div{background:var(--panel2);padding:11px 4px;display:flex;flex-direction:column;gap:6px;align-items:center}
   .result .k{font-size:9px;letter-spacing:.1em;color:var(--sub);font-weight:800}
   .result .v{font:800 23px/1 "Consolas",monospace}
   .best{font-size:12.5px;color:var(--accent);letter-spacing:.08em;font-weight:800;text-align:center}
+  .goal{width:100%;display:flex;flex-direction:column;gap:8px}
+  .goal .gbar{height:7px;border-radius:5px;background:rgba(255,255,255,.1);overflow:hidden;
+              box-shadow:inset 0 1px 2px rgba(0,0,0,.5)}
+  .goal .gbar i{display:block;height:100%;width:0;border-radius:5px;
+                background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .6s cubic-bezier(.3,.8,.3,1)}
   .endtext{font-size:13.5px;color:var(--sub);line-height:1.85;max-width:460px;text-align:center;white-space:pre-line}
 
   .toast{position:absolute;left:50%;bottom:calc(20px + var(--safe-b));transform:translate(-50%,14px);z-index:30;
@@ -197,16 +276,29 @@
   .dbtn:active{transform:translateY(3px);box-shadow:none;background:#2b3949}
   .dbtn.up{grid-area:u}.dbtn.left{grid-area:l}.dbtn.right{grid-area:r}.dbtn.down{grid-area:d}
   .dcore{grid-area:c;background:#0f151b;border-radius:9px;margin:12px;border:1px solid #222d38}
+  .grabwrap{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:9px}
+  .assign{display:flex;align-items:baseline;gap:7px;padding:5px 12px;border-radius:10px;
+          background:rgba(17,23,30,.85);border:1px solid rgba(255,176,32,.4)}
+  .assign .k{font-size:10px;font-weight:800;letter-spacing:.14em;color:var(--accent2)}
+  .assign .v{font:900 19px/1 "Consolas",monospace;color:#fff3dd}
   .grab{flex:0 0 auto;width:118px;height:118px;border-radius:50%;border:none;cursor:pointer;
         background:radial-gradient(circle at 38% 32%,#ffd985,var(--accent) 60%,#d8880c);
         color:#241804;font:900 22px/1 inherit;letter-spacing:.08em;
+        display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
         box-shadow:0 6px 0 #a86c08,0 14px 26px rgba(0,0,0,.45)}
+  .grab b{font:900 27px/1 "Consolas",monospace;letter-spacing:.02em}
+  .grab b.two{font-size:20px}.grab b.three{font-size:15px}
+  .grab span{font-size:12px;font-weight:800;letter-spacing:.06em;opacity:.78}
   .grab:active{transform:translateY(5px);box-shadow:0 1px 0 #a86c08,0 7px 16px rgba(0,0,0,.45)}
 
   @media (max-width:520px){
     .acts{gap:9px}
-    .act{padding:13px 13px;gap:11px}
+    .act{padding:13px 12px;gap:10px}
     .act .ico{width:42px;height:42px}
+    .act .tn{font-size:16px}
+    .act .td{font-size:10.5px;line-height:1.35}
+    .status{padding:12px 13px 11px}
+    .status .meta{gap:13px}
     .result{grid-template-columns:repeat(2,1fr)}
     .dpad{grid-template-columns:repeat(3,54px);grid-template-rows:repeat(3,54px)}
     .grab{width:104px;height:104px;font-size:20px}
@@ -214,7 +306,7 @@
   }
   @media (min-width:900px){
     .sheet{padding-left:max(16px,calc((100% - 1000px)/2 + 16px));padding-right:max(16px,calc((100% - 1000px)/2 + 16px))}
-    .acts{grid-template-columns:repeat(4,1fr)}
+    .acts{grid-template-columns:1.35fr 1fr 1fr 1fr}   /* 主導線の出勤を広く */
     .act.wide{grid-column:auto}
     .list{max-width:1000px;width:100%;align-self:center}
   }
@@ -244,18 +336,24 @@
         <div class="head">
           <div class="brand"><small>A R U B A I T E R</small>アルバイターじゅん</div>
           <div class="status">
-            <div class="chip"><span class="k">DAY</span><span class="v" id="hDay">1</span></div>
-            <div class="chip"><span class="k">時刻</span><span class="v" id="hClock">8:00</span></div>
-            <div class="chip"><span class="k">所持金</span><span class="v money" id="hMoney">¥0</span></div>
-            <div class="chip"><span class="k">残シフト</span><span class="v" id="hShift">2</span></div>
-            <div class="chip grow gauges">
+            <div class="hero">
+              <div class="money"><span class="k">所持金</span><span class="v" id="hMoney">¥0</span></div>
+              <div class="meta">
+                <span><i>DAY</i><b id="hDay">1</b></span>
+                <span><i>時刻</i><b id="hClock">8:00</b></span>
+                <span><i>残シフト</i><b id="hShift">2/2</b></span>
+              </div>
+            </div>
+            <div class="gauges">
               <div class="gauge"><span class="gk">体力</span><span class="gb"><i id="gStam"></i></span><span class="gv" id="vStam">100</span></div>
               <div class="gauge"><span class="gk">体調</span><span class="gb"><i id="gHealth"></i></span><span class="gv" id="vHealth">80</span></div>
               <div class="gauge"><span class="gk">気分</span><span class="gb"><i id="gMood"></i></span><span class="gv" id="vMood">70</span></div>
             </div>
-            <div class="chip grow gauges">
-              <div class="gauge"><span class="gk">Lv<b id="hLv">1</b></span><span class="gb"><i id="gXp" style="background:linear-gradient(90deg,#5bd6c4,#9ae6bd)"></i></span><span class="gv" id="hRate">100%</span></div>
-              <div class="gauge" style="font-size:10px;color:var(--sub)"><span id="hRentInfo"></span></div>
+            <div class="lvrow">
+              <span class="lv">Lv<b id="hLv">1</b></span>
+              <span class="gb"><i id="gXp" style="background:linear-gradient(90deg,#5bd6c4,#9ae6bd)"></i></span>
+              <span class="rate">時給 <b id="hRate">100%</b></span>
+              <span class="rent" id="hRentInfo"></span>
             </div>
           </div>
         </div>
@@ -263,10 +361,10 @@
         <div class="spacer"></div>
 
         <div class="acts" id="homeActs">
-          <button class="act" id="aWork">
+          <button class="act primary hasbadge" id="aWork">
             <span class="ico"><svg viewBox="0 0 24 24"><path d="M4 8h16v11H4z"/><path d="M9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M4 13h16"/></svg></span>
-            <span class="tx"><span class="tn">出勤する</span><span class="td">バイトを選んで働く</span></span>
-            <span class="badge" id="workBadge"></span>
+            <span class="tx"><span class="tn">出勤する<b class="badge" id="workBadge"></b></span>
+              <span class="td">バイトを選んで働く</span></span>
           </button>
           <button class="act" id="aPlay">
             <span class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="9" rx="4"/><path d="M8 12.5h-2m1-1v2"/><circle cx="16" cy="12" r=".6" fill="var(--accent2)" stroke="none"/><circle cx="18" cy="13.5" r=".6" fill="var(--accent2)" stroke="none"/></svg></span>
@@ -377,8 +475,12 @@
             <div class="prow minus"><span id="dFoodLabel">食費</span><b id="dFood">¥0</b></div>
             <div class="prow minus hide" id="dRentRow"><span>家賃</span><b id="dRent">¥0</b></div>
             <div class="prow total"><span>残高</span><b id="dMoney">¥0</b></div>
+            <div class="prow mini stat" id="dStatRow"><span>今日のからだ</span><b id="dStat"></b></div>
           </div>
-          <div class="best" id="dNote"></div>
+          <div class="goal">
+            <div class="gbar"><i id="dGoalBar"></i></div>
+            <div class="best" id="dNote"></div>
+          </div>
           <button class="btn block" id="btnNextDay">次 の 日 へ</button>
         </div>
       </div>
@@ -412,7 +514,10 @@
       <button class="dbtn right" data-dir="1,0"  aria-label="右"><svg viewBox="0 0 24 24"><path d="M18 12l-9 7V5z"/></svg></button>
       <button class="dbtn down"  data-dir="0,1"  aria-label="下"><svg viewBox="0 0 24 24"><path d="M12 18l-7-9h14z"/></svg></button>
     </div>
-    <button class="grab" id="btnGrab">取る</button>
+    <div class="grabwrap">
+      <div class="assign" id="assignTag"><span class="k">担当</span><span class="v" id="assignVal">---</span></div>
+      <button class="grab" id="btnGrab"><b id="grabNum">---</b><span>だけ取る</span></button>
+    </div>
   </div>
 </div>
 
@@ -488,13 +593,13 @@ function layout(){
 
 // ---------- バイト先（すべて時給制） ----------
 const JOBS = [
-  { id:'sort', name:'宅配 仕分けセンター', short:'仕分け', hourly:1180, lives:3, stamina:36,
+  { id:'sort', name:'宅配 仕分けセンター', short:'仕分け', hourly:1020, lives:3, stamina:36,
     speed:1.14, spawnMul:1.00, rule:'number', minLv:1,
     desc:'伝票の担当番号を読んで、自分の番号だけを抜く。まずはここから。' },
-  { id:'register', name:'コンビニ レジ打ち', short:'レジ', hourly:1250, lives:3, stamina:30,
+  { id:'register', name:'コンビニ レジ打ち', short:'レジ', hourly:1080, lives:3, stamina:30,
     rule:'register', minLv:2,
     desc:'会計して、正しいお釣りを渡す。もたつくと客が苛立ち、渡し間違えもミス。' },
-  { id:'waste', name:'クリーンセンター 分別ライン', short:'分別', hourly:1420, lives:3, stamina:44,
+  { id:'waste', name:'クリーンセンター 分別ライン', short:'分別', hourly:1230, lives:3, stamina:44,
     speed:1.20, spawnMul:0.62, rule:'swipe3', minLv:3,
     desc:'3本のレーンに資源が混ざって流れる。スワイプで正しいレーン（1カン/2ビン/3ペット）へ。' },
 ];
@@ -502,7 +607,7 @@ const JOBS = [
 const CFG = {
   baseSpeed:104, speedPerLevel:16, speedInLevel:1.0, maxSpeed:300,
   baseSpawn:1240, spawnPerLevel:64, minSpawn:450,
-  mineRate:0.36, clearPerLevel:12, maxLives:3,
+  mineRate:0.36, clearPerLevel:8, maxLives:3,
 };
 
 // ---------- 遊ぶ ----------
@@ -637,7 +742,7 @@ const S = {
   running:false, paused:false, scene:'room', maxLives:3,
   t:0, spawnTimer:0,
   boxes:[], flying:[], fx:[], texts:[], rings:[],
-  score:0, dispScore:0, combo:0, bestCombo:0,
+  score:0, dispScore:0, scoreShown:-1, combo:0, bestCombo:0,
   cleared:0, clearedInLevel:0,
   wrongPicks:0, dropped:0, reactSum:0, reactN:0, sinceMine:0,
   level:1, lives:CFG.maxLives,
@@ -704,7 +809,15 @@ function assignCodes(){
   S.codes = out; S.zones = {};
   const used = [];
   out.forEach(c => { let z; do{ z = pick(ZONES); }while(used.includes(z)); used.push(z); S.zones[c] = z; });
-  S.boardPulse = 1;
+  S.boardPulse = 1; updateAssignTag();
+}
+// 「取る」ボタンのすぐ上にも担当番号を出す（伝票カードは画面の上端で遠いため）
+function updateAssignTag(){
+  const el = $('assignVal'), gn = $('grabNum'); if(!el) return;
+  const txt = S.codes.length ? S.codes.join(' / ') : '---';
+  el.textContent = txt;
+  el.style.fontSize = S.codes.length >= 3 ? '15px' : S.codes.length === 2 ? '17px' : '19px';
+  if(gn){ gn.textContent = txt; gn.className = S.codes.length >= 3 ? 'three' : S.codes.length === 2 ? 'two' : ''; }
 }
 function addCode(){
   const avoid = S.codes.concat(S.boxes.map(b => b.code));
@@ -713,7 +826,7 @@ function addCode(){
   let z; do{ z = pick(ZONES); }while(used.includes(z));
   S.zones[c] = z;
   for(const b of S.boxes) if(!b.judged) b.mine = S.codes.includes(b.code);
-  S.boardPulse = 1;
+  S.boardPulse = 1; updateAssignTag();
 }
 
 // ---------- HUD ----------
@@ -920,6 +1033,29 @@ const REG = {
 const traySum = () => REG.denoms.reduce((s,d)=> s + d*(REG.tray[d]||0), 0);
 const denomKind = d => d >= 1000 ? 'bill' : 'coin';
 
+// 客のタイプ（怒りだすまでの長さが違う）
+const CUST_KINDS = [
+  { id:'normal', w:6, pat:1.00, tag:null },
+  { id:'hurry',  w:3, pat:0.62, tag:'急いでいる' },
+  { id:'calm',   w:3, pat:1.45, tag:null },
+  { id:'kind',   w:1, pat:1.95, tag:'のんびり' },
+];
+const pickKind = () => {
+  let r = Math.random() * CUST_KINDS.reduce((s,k)=>s+k.w,0);
+  for(const k of CUST_KINDS){ if((r -= k.w) < 0) return k; }
+  return CUST_KINDS[0];
+};
+function newLook(kind){
+  return {
+    hair:   rnd(6), hairCol: rnd(5), skin: rnd(3),
+    cloth:  kind.id==='hurry' ? rnd(2) : 2 + rnd(4),      // 急ぎの客はスーツ寄りの色
+    cap:    rnd(3),
+    glasses: Math.random() < .28,
+    beard:   Math.random() < .15,
+    bag:     Math.random() < .34,
+    big:     0.93 + Math.random()*0.16,
+  };
+}
 function newCustomer(){
   const lv = S.level;
   const cap = 380 + lv*260;
@@ -931,7 +1067,10 @@ function newCustomer(){
     if(frac) paid += (100 - frac);
   }
   const change = paid - total;
-  REG.cust = { total, paid, change, pat:1, patMax:clamp(11 - lv*0.55, 5, 11), face:rnd(4), x:1, ready:0 };
+  const kind = pickKind();
+  const base = clamp(11 - lv*0.55, 5, 11);
+  REG.cust = { total, paid, change, pat:1, patMax: clamp(base * kind.pat, 3.2, 22),
+               kind, look:newLook(kind), face:rnd(4), x:1, ready:0 };
   REG.tray = {};
 }
 function nextCustomer(){ REG.state = 'gap'; REG.gap = 0.45; REG.cust = null; REG.tray = {}; REG.fly.length = 0; }
@@ -1029,6 +1168,13 @@ function update(dt){
   S.t += dt;
   S.dispScore += (S.score - S.dispScore) * Math.min(1, dt*9);
   if(Math.abs(S.score - S.dispScore) < .6) S.dispScore = S.score;
+  const sv = Math.round(S.dispScore);                       // HUDのSCOREへ反映（カウントアップ）
+  if(sv !== S.scoreShown){
+    S.scoreShown = sv;
+    const el = $('score');
+    el.textContent = sv.toLocaleString();
+    el.classList.toggle('hot', sv > 0);
+  }
 
   if(S.running && !S.paused){
     LIFE.clock += dt * CLOCK_RATE;
@@ -1160,6 +1306,7 @@ function drawWarehouse(){
   ctx.strokeStyle = 'rgba(255,255,255,.022)'; ctx.lineWidth = 8;
   for(let i=0;i<12;i++){ ctx.beginPath(); ctx.moveTo(-80+i*140,0); ctx.lineTo(30+i*140,H); ctx.stroke(); }
 }
+const WASTE_TINT = ['201,72,60','169,116,64','111,177,200'];   // カン=赤 ビン=茶 ペット=水色
 function drawBelt(lane){
   const {W, beltH} = LAY;
   const cy = LAY.laneY[lane], top = cy - beltH/2;
@@ -1176,6 +1323,13 @@ function drawBelt(lane){
   ctx.fillStyle = '#4d5a69'; ctx.fillRect(0, top-6, W, 6);
   ctx.fillStyle = 'rgba(255,255,255,.10)'; ctx.fillRect(0, top-6, W, 1.5);
   ctx.fillStyle = '#12171d'; ctx.fillRect(0, top+beltH, W, 6);
+  if(isSwipeJob()){                       // レーンごとに資源の色を薄く敷いて、行き先を見せる
+    const t = WASTE_TINT[lane % 3];
+    const lg = ctx.createLinearGradient(0, top, 0, top+beltH);
+    lg.addColorStop(0, `rgba(${t},.20)`); lg.addColorStop(.5, `rgba(${t},.09)`); lg.addColorStop(1, `rgba(${t},.20)`);
+    ctx.fillStyle = lg; ctx.fillRect(0, top, W, beltH);
+    ctx.fillStyle = `rgba(${t},.55)`; ctx.fillRect(0, top-6, W, 2.4); ctx.fillRect(0, top+beltH+3.6, W, 2.4);
+  }
 }
 function drawReach(){
   if(!S.running || isSwipeJob() || isRegisterJob()) return;
@@ -1250,17 +1404,22 @@ function drawChute(){
   ctx.strokeStyle = a>0 ? `rgba(255,90,77,${.35+a*.5})` : 'rgba(120,140,160,.3)';
   ctx.lineWidth = 2; ctx.setLineDash([9,9]); ctx.lineDashOffset = -S.t*22;
   ctx.beginPath(); ctx.moveTo(chuteW-6, boardB); ctx.lineTo(chuteW-6, floorY); ctx.stroke(); ctx.setLineDash([]);
-  const sort3 = isSwipeJob();
+  const sort3 = isSwipeJob(), wname = ['カン','ビン','ペット'];
   for(let l=0;l<LANES;l++){
     const cy = LAY.laneY[l], al = S.laneAlert[l];
     ctx.save(); ctx.translate(chuteW/2+4, cy);
-    const hh = (sort3 ? 33 : 21)*Math.min(1.1,LAY.u);
+    const hh = (sort3 ? 41 : 21)*Math.min(1.1,LAY.u);
+    const hw = Math.min(sort3 ? 22 : 19, chuteW/2);
     ctx.fillStyle = al>0 ? `rgba(255,90,77,${.2+al*.5})` : 'rgba(255,255,255,.045)';
-    rr(-19,-hh,38,hh*2,6); ctx.fill();
-    ctx.strokeStyle = al>0 ? `rgba(255,120,110,${.5+al*.5})` : 'rgba(255,176,32,.5)'; ctx.lineWidth = 1.4; rr(-19,-hh,38,hh*2,6); ctx.stroke();
+    rr(-hw,-hh,hw*2,hh*2,6); ctx.fill();
+    ctx.strokeStyle = al>0 ? `rgba(255,120,110,${.5+al*.5})` : 'rgba(255,176,32,.5)'; ctx.lineWidth = 1.4; rr(-hw,-hh,hw*2,hh*2,6); ctx.stroke();
     ctx.fillStyle = al>0 ? '#ff9a90' : '#ffb020'; ctx.textAlign = 'center';
-    if(sort3){ ctx.font = '800 13px Consolas, monospace'; ctx.fillText(String(l+1), 0, -21);
-      ctx.save(); ctx.translate(0, 6); ctx.globalAlpha = .95; drawWasteIcon(l, 40, 0); ctx.restore();
+    if(sort3){
+      ctx.font = '800 12px Consolas, monospace'; ctx.fillText(String(l+1), 0, -hh+11);
+      ctx.save(); ctx.translate(0, -2); ctx.globalAlpha = .95; drawWasteIcon(l, 38, 0); ctx.restore();
+      ctx.fillStyle = al>0 ? '#ffc4bd' : '#ffd479';          // 番号よりカテゴリ名を読ませる
+      ctx.font = `800 ${wname[l].length>2?11:12}px "Yu Gothic UI", sans-serif`;
+      ctx.fillText(wname[l], 0, hh-11);
     }else{ ctx.font = '800 21px Consolas, monospace'; ctx.fillText(String(l+1), 0, 1); }
     ctx.restore();
   }
@@ -1476,17 +1635,45 @@ function drawMoneyIcon(val, cx, cy, s){
   if(denomKind(val)==='bill') drawBill(cx, cy, s*1.7, s*0.92, val);
   else drawCoin(cx, cy, s*0.5, val);
 }
+const CUST_HAIR  = ['#2b2620','#3a2d22','#20242b','#4a3b2c','#6e5b45'];
+const CUST_SKIN  = ['#efc79c','#dfb184','#f4d5b2'];
+const CUST_CLOTH = ['#3d4a5e','#4a4f5c','#5a6b7c','#63705a','#7c5a6b','#7c6b5a'];
+const CUST_CAP   = ['#c9483c','#3a5b8c','#4b7a52'];
 function drawCustomer(c, x, y, s){
   const angry = c.pat < .3, worry = c.pat < .55;
-  ctx.save(); ctx.translate(x,y); ctx.scale(s,s);
+  const L = c.look || {hair:0,hairCol:0,skin:0,cloth:2,cap:0,big:1};
+  ctx.save(); ctx.translate(x,y); ctx.scale(s*(L.big||1), s*(L.big||1));
+  const skin = CUST_SKIN[L.skin % CUST_SKIN.length];
+  // 買い物カゴ（カウンターの手前）
+  if(L.bag){
+    ctx.fillStyle = '#b8433a'; rr(-40,18,20,14,3); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 1.2; rr(-40,18,20,14,3); ctx.stroke();
+    ctx.fillStyle = '#e6c07a'; ctx.fillRect(-37,21,7,5); ctx.fillStyle = '#7fae63'; ctx.fillRect(-28,20,6,6);
+  }
   // 体
-  ctx.fillStyle = angry ? '#7d5b52' : '#5a6b7c'; rr(-22,6,44,42,10); ctx.fill();
+  ctx.fillStyle = angry ? '#7d5b52' : CUST_CLOTH[L.cloth % CUST_CLOTH.length]; rr(-22,6,44,42,10); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.beginPath();
+  ctx.moveTo(-9,6); ctx.lineTo(0,16); ctx.lineTo(9,6); ctx.closePath(); ctx.fill();   // 襟
   // 首・顔
-  ctx.fillStyle = '#e7bd93'; rr(-6,-6,12,12,3); ctx.fill();
-  ctx.fillStyle = '#efc79c'; ctx.beginPath(); ctx.arc(0,-16,16,0,Math.PI*2); ctx.fill();
-  // 髪
-  ctx.fillStyle = ['#2b2620','#3a2d22','#20242b','#4a3b2c'][c.face%4];
-  ctx.beginPath(); ctx.arc(0,-18,16,Math.PI*1.02,Math.PI*1.98,false); ctx.fill(); ctx.fillRect(-16,-19,32,4);
+  ctx.fillStyle = skin; rr(-6,-6,12,12,3); ctx.fill();
+  ctx.beginPath(); ctx.arc(0,-16,16,0,Math.PI*2); ctx.fill();
+  // 髪型（6種）＋帽子
+  const hc = CUST_HAIR[L.hairCol % CUST_HAIR.length];
+  ctx.fillStyle = hc;
+  if(L.hair === 5){                                     // キャップ
+    ctx.fillStyle = CUST_CAP[L.cap % CUST_CAP.length];
+    ctx.beginPath(); ctx.arc(0,-20,16,Math.PI,0); ctx.fill();
+    ctx.fillRect(-16,-21,32,4);
+    rr(-24,-22,20,4,2); ctx.fill();                     // つば
+    ctx.fillStyle = hc; ctx.fillRect(-16,-17,32,3);     // はみ出た髪
+  }else{
+    const wide = L.hair === 3 ? Math.PI*1.15 : Math.PI*1.02;
+    ctx.beginPath(); ctx.arc(0,-18,16,wide,Math.PI*2-(wide-Math.PI),false); ctx.fill();
+    if(L.hair !== 3) ctx.fillRect(-16,-19,32,4);
+    if(L.hair === 1){ rr(-17,-19,6,17,3); ctx.fill(); rr(11,-19,6,17,3); ctx.fill(); }      // ボブ
+    if(L.hair === 2){ ctx.beginPath(); ctx.ellipse(17,-8,5,9,0,0,Math.PI*2); ctx.fill(); }  // ポニーテール
+    if(L.hair === 4){ ctx.beginPath(); ctx.arc(0,-33,6.5,0,Math.PI*2); ctx.fill(); }        // お団子
+  }
   // 目
   ctx.fillStyle = '#20242b';
   if(angry){ ctx.save(); ctx.lineWidth=2; ctx.strokeStyle='#20242b'; ctx.lineCap='round';
@@ -1497,9 +1684,25 @@ function drawCustomer(c, x, y, s){
     ctx.beginPath(); ctx.arc(-6,-16,1.9,0,Math.PI*2); ctx.arc(6,-16,1.9,0,Math.PI*2); ctx.fill();
     ctx.strokeStyle='#20242b'; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(0,-9,worry?2:3,worry?0:0.15*Math.PI,Math.PI*0.85); ctx.stroke();
   }
-  // 感情の吹き出し
-  if(angry){ ctx.fillStyle='#ff5a4d'; ctx.font='800 13px "Yu Gothic UI"'; ctx.textAlign='center'; ctx.fillText('！！', 24, -26); }
-  else if(worry){ ctx.fillStyle='#ffb020'; ctx.font='800 12px "Yu Gothic UI"'; ctx.textAlign='center'; ctx.fillText('…？', 24, -26); }
+  // ひげ・メガネ
+  if(L.beard){ ctx.strokeStyle = hc; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0,-10,8,Math.PI*0.15,Math.PI*0.85); ctx.stroke(); }
+  if(L.glasses){
+    ctx.strokeStyle = 'rgba(40,48,58,.85)'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(-6,-16,4.6,0,Math.PI*2); ctx.arc(6,-16,4.6,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-1.4,-16); ctx.lineTo(1.4,-16); ctx.moveTo(-10.6,-17); ctx.lineTo(-15,-18);
+    ctx.moveTo(10.6,-17); ctx.lineTo(15,-18); ctx.stroke();
+  }
+  // 感情の吹き出し／せっかちな客の目印
+  ctx.textAlign='center';
+  if(angry){ ctx.fillStyle='#ff5a4d'; ctx.font='800 13px "Yu Gothic UI"'; ctx.fillText('！！', 24, -26); }
+  else if(worry){ ctx.fillStyle='#ffb020'; ctx.font='800 12px "Yu Gothic UI"'; ctx.fillText('…？', 24, -26); }
+  if(c.kind && c.kind.tag){
+    const hurry = c.kind.id === 'hurry';
+    ctx.fillStyle = hurry ? 'rgba(255,90,77,.92)' : 'rgba(63,209,139,.9)';
+    rr(-27, -49, 54, 15, 7); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = '800 10px "Yu Gothic UI"'; ctx.textBaseline = 'middle';
+    ctx.fillText(c.kind.tag, 0, -41.5);
+  }
   ctx.restore();
 }
 
@@ -1572,9 +1775,14 @@ function drawRegister(){
   const sum = traySum();
   ctx.textAlign='left'; ctx.fillStyle='#8698ab'; ctx.font=`700 ${F(11)}px "Yu Gothic UI"`; ctx.textBaseline='middle';
   ctx.fillText('お釣りトレイ（タップで戻す）', F(22), trayTop+F(14));
-  ctx.textAlign='right';                                  // 正解かどうかは出さない（合計だけ）
+  ctx.textAlign='right';                                  // 正解かどうかは出さない（いまの合計だけ）
+  const amt = `¥${sum.toLocaleString()}`;
+  ctx.font = `800 ${F(18)}px Consolas, monospace`;
+  const aw = ctx.measureText(amt).width;
+  ctx.fillStyle='#8698ab'; ctx.font=`700 ${F(11)}px "Yu Gothic UI"`;
+  ctx.fillText('いま', W-F(22)-aw-F(7), trayTop+F(15));
   ctx.fillStyle = '#eef3f8'; ctx.font=`800 ${F(18)}px Consolas, monospace`;
-  ctx.fillText(`¥${sum.toLocaleString()}`, W-F(22), trayTop+F(15));
+  ctx.fillText(amt, W-F(22), trayTop+F(15));
   // トレイのチップ
   let tx = F(24); const chipY = trayTop + trayH*0.62, chipR = F(15);
   for(const d of REG.denoms){
@@ -1891,7 +2099,8 @@ const wageRate = () => 1 + (LIFE.lv-1)*0.09;
 const moodPenalty = () => LIFE.mood < 25 ? 1 : 0;
 
 function saveLife(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(LIFE)); }catch(e){} }
-function loadLife(){ try{ const raw = localStorage.getItem(SAVE_KEY); if(raw) Object.assign(LIFE, JSON.parse(raw)); if(!Array.isArray(LIFE.owned)) LIFE.owned=[]; }catch(e){} }
+function loadLife(){ try{ const raw = localStorage.getItem(SAVE_KEY); if(raw) Object.assign(LIFE, JSON.parse(raw)); if(!Array.isArray(LIFE.owned)) LIFE.owned=[]; }catch(e){}
+  if(!LIFE.dayStat) LIFE.dayStat = { stamina:LIFE.stamina, health:LIFE.health, mood:LIFE.mood }; }
 function record(){ try{ return JSON.parse(localStorage.getItem(REC_KEY)) || null; }catch(e){ return null; } }
 function saveRecord(r){ try{ localStorage.setItem(REC_KEY, JSON.stringify(r)); }catch(e){} }
 function gainXp(n){ LIFE.xp += n; let up = 0; while(LIFE.xp >= xpNeed(LIFE.lv)){ LIFE.xp -= xpNeed(LIFE.lv); LIFE.lv++; up++; } return up; }
@@ -1970,7 +2179,7 @@ function renderHome(){
   $('gXp').style.width = Math.min(100, LIFE.xp / xpNeed(LIFE.lv) * 100) + '%';
   const rentInfo = isRentDay(LIFE.day) ? `<b style="color:#ff9a90">今夜は家賃 ${yen(RULES.rent)}</b>`
     : LIFE.day === RULES.utilDay ? `<b style="color:#ff9a90">今夜は光熱費 ${yen(RULES.util)}</b>`
-    : `次の家賃まで ${RULES.rentEvery - LIFE.day % RULES.rentEvery}日`;
+    : `次の家賃まで <b style="color:#c3d3e2">${RULES.rentEvery - LIFE.day % RULES.rentEvery}日</b>`;
   $('hRentInfo').innerHTML = rentInfo;
 
   const noShift = LIFE.shifts >= RULES.maxShifts;
@@ -1981,13 +2190,22 @@ function renderHome(){
   $('sleepLabel').textContent = LIFE.sick ? '横になる' : '寝る';
 
   const parts = [];
-  if(LIFE.mood < 25) parts.push('<b style="color:#ff9a90">気分が沈んでいる</b> ミスできる回数が1回減る');
-  if(LIFE.event) parts.push('<b>できごと</b> ' + LIFE.event);
-  parts.push(`残り <b>${RULES.days - LIFE.day + 1}日</b>　目標 <b>${yen(RULES.goal)}</b>`);
-  $('hNotice').innerHTML = parts.join('　／　');
+  if(LIFE.mood < 25) parts.push('<span class="seg warn"><em>注意</em>気分が沈んでいる（ミス可能回数 -1）</span>');
+  if(LIFE.event) parts.push(`<span class="seg ev"><em>できごと</em>${LIFE.event}</span>`);
+  parts.push(`<span class="seg"><em>のこり</em><b>${RULES.days - LIFE.day + 1}日</b></span>`);
+  parts.push(`<span class="seg"><em>家賃</em><b>${yen(RULES.rent)}</b>/週</span>`);
+  parts.push(`<span class="seg"><em>引越し資金</em><b>${yen(RULES.goal)}</b></span>`);
+  $('hNotice').className = 'note notice';
+  $('hNotice').innerHTML = parts.join('');
   showScreen('ovHome'); saveLife();
 }
 
+// ---------- 選択カードの数値表記（増減で色を分ける） ----------
+const sgn = n => (n >= 0 ? '+' : '') + n;
+function stat(label, v, kind){                 // 体力=黄 体調=緑 気分=紫 マイナスは赤
+  const cls = v < 0 ? 's-minus' : kind;
+  return `<span>${label} <b class="${cls}">${sgn(v)}</b></span>`;
+}
 // ---------- 出勤先えらび ----------
 function jobIcon(rule){
   if(rule==='register') return '<svg viewBox="0 0 24 24" fill="none" stroke="#5bd6c4" stroke-width="1.8"><rect x="4" y="10" width="16" height="9" rx="1.5"/><path d="M7 10V6h7l3 4"/><circle cx="9" cy="14.5" r="1"/></svg>';
@@ -2009,7 +2227,8 @@ function renderWork(){
       `<div class="cn"><span class="ci">${jobIcon(j.rule)}</span>${j.name}</div>` +
       `<div class="cd">${j.desc}</div>` +
       `<div class="cm"><span class="cw">${yen(wage)}<span class="u">/時</span></span>` +
-      `<span class="ct">体力 ${j.stamina}　ミス <b>${j.lives}回</b>まで</span></div>` +
+      `<span class="ct"><span>体力 <b class="s-minus">-${j.stamina}</b></span>` +
+      `<span>ミス <b>${j.lives}回</b>まで</span></span></div>` +
       (locked ? `<div class="lock">アルバイターLv${j.minLv} で解禁</div>` :
        tired  ? `<div class="lock">体力が足りない</div>` : '');
     if(!dis) b.addEventListener('click', () => startShift(j));
@@ -2055,10 +2274,13 @@ function renderPlay(){
   for(const pl of PLAYS){
     const broke = LIFE.money < pl.cost;
     const b = document.createElement('button'); b.className = 'card2'; b.disabled = broke;
-    const g = pl.gamble ? '気分 ？（当たれば大）' : `気分 +${pl.mood}`;
+    // 遊ぶ画面は「得るもの（気分）」を主役に、出費は右へ
+    const gain = pl.gamble ? '気分 <b>？</b>' : `気分 <b>+${pl.mood}</b>`;
     b.innerHTML = `<div class="cn"><span class="ci">${playIcon(pl.id)}</span>${pl.n}</div><div class="cd">${pl.d}</div>` +
-      `<div class="cm"><span class="cw">${pl.cost?('-'+yen(pl.cost)):'無料'}</span>` +
-      `<span class="ct">${g}　${pl.mins}分${pl.health?`　体調 ${pl.health}`:''}</span></div>` +
+      `<div class="cm"><span class="cw mood">${gain}</span>` +
+      `<span class="ct"><span class="s-minus">${pl.cost?('-'+yen(pl.cost)):'無料'}</span>` +
+      `${pl.health?stat('体調', pl.health, 's-health'):''}` +
+      `<span class="s-time">${pl.mins}分</span></span></div>` +
       (broke ? '<div class="lock">お金が足りない</div>' : '');
     if(!broke) b.addEventListener('click', () => doPlay(pl));
     el.appendChild(b);
@@ -2073,15 +2295,24 @@ function buyItem(it){
   LIFE.money -= it.cost; LIFE.owned.push(it.id);
   SFX.buy(); saveLife(); toast(`${it.n} を買った。部屋に置いた。`); renderShop();
 }
+function shopIcon(id){
+  const sv = (col, inner) => `<svg viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+  if(id === 'plant')  return sv('#7fc96a', '<path d="M7.6 14.6h8.8l-1.1 6.6H8.7z"/><path d="M12 14.4V8.6"/><path d="M12 10.4c-3.4 0-4.6-2-4.8-4.6 2.8-.3 4.6 1.4 4.8 4.6z"/><path d="M12 11.6c.4-3.2 2.2-4.8 5-4.4-.2 2.8-1.6 4.4-5 4.4z"/>');
+  if(id === 'rug')    return sv('#d98cb0', '<rect x="2.8" y="7.4" width="18.4" height="9.2" rx="3.4"/><path d="M2.8 12h18.4" stroke-opacity=".5"/><path d="M2 8.6v6.8M22 8.6v6.8" stroke-opacity=".55"/>');
+  if(id === 'poster') return sv('#7fb2e8', '<rect x="3.4" y="4.4" width="17.2" height="15.2" rx="1.6"/><circle cx="9" cy="9.4" r="1.8" fill="#7fb2e8" fill-opacity=".4"/><path d="M4.6 17.4l4.6-5 3.2 3 2.6-2.4 3.4 4.4z"/>');
+  if(id === 'guitar') return sv('#d9a05b', '<path d="M9.4 21.2a4.4 4.4 0 0 1-1.6-8 3.6 3.6 0 0 0 3.4-3.6l4.4-4.4 2.6 2.6-4.4 4.4a3.6 3.6 0 0 0-3.6 3.4 4.4 4.4 0 0 1-.8 5.6z"/><circle cx="10.6" cy="16.4" r="1.4"/><path d="M17.4 3.6l3 3"/>');
+  if(id === 'fridge') return sv('#cfd6de', '<rect x="6.4" y="2.6" width="11.2" height="18.8" rx="2"/><path d="M6.4 10.2h11.2"/><path d="M9 6.2v2M9 13v2.4"/>');
+  return sv('#ff9a90', '<circle cx="6" cy="16.4" r="3.4"/><circle cx="18" cy="16.4" r="3.4"/><path d="M6 16.4l3.4-5h5.2l3.4 5"/><path d="M9.4 11.4l-1-2.6h3.2"/><path d="M14.6 11.4h3.4"/>');
+}
 function renderShop(){
   leaveWork(); S.scene = 'room';
   const el = $('shopList'); el.innerHTML = '';
   for(const it of SHOP){
     const owned = LIFE.owned.includes(it.id), broke = LIFE.money < it.cost;
-    const b = document.createElement('button'); b.className = 'card2'; b.disabled = owned || broke;
-    b.innerHTML = `<div class="cn">${it.n}</div><div class="cd">${it.d}</div>` +
-      `<div class="cm"><span class="cw">${owned?'購入済み':('-'+yen(it.cost))}</span></div>` +
-      (owned ? '<div class="lock" style="color:#5bd6c4">部屋に飾ってある</div>' : broke ? '<div class="lock">お金が足りない</div>' : '');
+    const b = document.createElement('button'); b.className = 'card2' + (owned ? ' owned' : ''); b.disabled = owned || broke;
+    b.innerHTML = `<div class="cn"><span class="ci">${shopIcon(it.id)}</span>${it.n}</div><div class="cd">${it.d}</div>` +
+      `<div class="cm">${owned ? '<span class="ct"><span class="s-health">部屋に飾ってある</span></span>' : `<span class="cw">-${yen(it.cost)}</span>`}</div>` +
+      (owned ? '<div class="badge2">購入済み</div>' : broke ? '<div class="lock">お金が足りない</div>' : '');
     if(!owned && !broke) b.addEventListener('click', () => buyItem(it));
     el.appendChild(b);
   }
@@ -2106,7 +2337,7 @@ function startShift(job){
 
   S.paused = false; S.running = true;
   S.boxes = []; S.flying = []; S.fx = []; S.texts = []; S.rings = []; S.demo.length = 0;
-  S.score = 0; S.dispScore = 0; S.combo = 0; S.bestCombo = 0;
+  S.score = 0; S.dispScore = 0; S.scoreShown = -1; S.combo = 0; S.bestCombo = 0;
   S.cleared = 0; S.clearedInLevel = 0;
   S.wrongPicks = 0; S.dropped = 0; S.reactSum = 0; S.reactN = 0; S.sinceMine = 0;
   S.level = 1; S.maxLives = Math.max(1, job.lives - moodPenalty()); S.lives = S.maxLives;
@@ -2193,10 +2424,9 @@ function renderMarket(){
   for(const meal of MEALS){
     const broke = LIFE.money < meal.cost;
     const b = document.createElement('button'); b.className = 'card2'; b.disabled = broke;
-    const he = meal.health;
     b.innerHTML = `<div class="cn"><span class="ci">${mealIcon(meal.id)}</span>${meal.n}</div><div class="cd">${meal.d}</div>` +
       `<div class="cm"><span class="cw">${meal.cost?('-'+yen(meal.cost)):'¥0'}</span>` +
-      `<span class="ct">体力 +${meal.stamina}　体調 ${he>=0?'+':''}${he}</span></div>` +
+      `<span class="ct">${stat('体力', meal.stamina, 's-stam')}${stat('体調', meal.health, 's-health')}</span></div>` +
       (broke ? '<div class="lock">お金が足りない</div>' : '');
     if(!broke) b.addEventListener('click', () => doMeal(meal));
     el.appendChild(b);
@@ -2226,7 +2456,16 @@ function doMeal(meal){
   }
   $('dMoney').textContent = yen(LIFE.money);
   $('dMoney').style.color = LIFE.money < 0 ? '#b8322a' : '#20242b';
-  $('dNote').textContent = LIFE.money < 0 ? '所持金がマイナス。もう後がない。' : `貯金目標まで ${yen(Math.max(0, RULES.goal - LIFE.money))}`;
+  const rest = Math.max(0, RULES.goal - LIFE.money);
+  $('dGoalBar').style.width = clamp(LIFE.money / RULES.goal * 100, 0, 100) + '%';
+  $('dNote').textContent = LIFE.money < 0 ? '所持金がマイナス。もう後がない。'
+    : rest === 0 ? `引越し資金 ${yen(RULES.goal)} に到達` : `引越し資金 ${yen(RULES.goal)} まで あと ${yen(rest)}`;
+  // 今日のからだの増減（何が回復して何が減ったか）
+  const dm = v => `<i class="${v<0?'m':'p'}">${v>=0?'+':''}${v}</i>`;
+  $('dStat').innerHTML =
+    `体力 ${dm(Math.round(LIFE.stamina - (LIFE.dayStat?.stamina ?? LIFE.stamina)))}` +
+    `　体調 ${dm(Math.round(LIFE.health - (LIFE.dayStat?.health ?? LIFE.health)))}` +
+    `　気分 ${dm(Math.round(LIFE.mood - (LIFE.dayStat?.mood ?? LIFE.mood)))}`;
   S.scene = 'sleep'; leaveWork(); stopBGM();
   saveLife(); showScreen('ovDay');
 }
@@ -2237,14 +2476,16 @@ function nextDay(){
     LIFE.money >= RULES.goal*1.5 && LIFE.lv >= 5 ? 'hired' : LIFE.money >= RULES.goal ? 'saved' : 'survive');
   LIFE.day++; LIFE.shifts = 0; LIFE.earnedToday = 0; LIFE.clock = DAY_START;
   LIFE.mood = clamp(LIFE.mood - 6, 0, 100);
-  rollMorning(); renderHome();
+  rollMorning();
+  LIFE.dayStat = { stamina:LIFE.stamina, health:LIFE.health, mood:LIFE.mood };   // 朝の値を控える
+  renderHome();
 }
 
 const ENDINGS = {
   bankrupt:{t:'夜　逃　げ', c:'#ff5a4d', x:'家賃も食費も払えなくなった。段ボールをたたんで、部屋を出た。\nじゅんの一ヶ月は、ここで途切れた。'},
   burnout: {t:'燃　え　尽　き', c:'#c78bff', x:'ある朝、体は動くのに、どうしても布団から出られなかった。\n数字は増えても、心がついてこなかった。じゅんはしばらく休むことにした。'},
-  survive: {t:'ま　だ　続　く', c:'#8ea0b2', x:'月は越えた。貯金は目標に届かなかったけれど、明日もラインは動く。\nじゅんはまた、朝の電車に乗る。'},
-  saved:   {t:'貯 金 が で き た', c:'#3fd18b', x:'家賃を払っても手元に残った。はじめて通帳の数字が増えた月だった。\nじゅんは少しだけ、先のことを考えられるようになった。'},
+  survive: {t:'ま　だ　続　く', c:'#8ea0b2', x:'30日は越えた。引越し資金には届かなかったけれど、明日もラインは動く。\nじゅんはまた、週払いの部屋で朝を迎える。'},
+  saved:   {t:'引 越 し 資 金', c:'#3fd18b', x:'毎週の家賃を払っても、10万円が手元に残った。\nこれで、週払いの部屋を出られる。じゅんは少しだけ、先のことを考えられるようになった。'},
   hired:   {t:'正 社 員 登 用', c:'#ffb020', x:'「うちで正社員やらないか」— 主任がそう言った。\n番号を読み違えなくなった目と、休まなかった一ヶ月が、じゅんを拾い上げた。'},
 };
 function ending(kind){
@@ -2262,7 +2503,8 @@ function newLife(){
   Object.assign(LIFE, {
     day:1, money:38000, stamina:100, health:80, mood:70, clock:DAY_START, shifts:0, lv:1, xp:0,
     earnedToday:0, totalCleared:0, totalEarned:0, restDays:0, todayBonus:0, sick:false, ended:false, owned:[],
-    event:'今月の家賃までに、なんとか立て直したい。',
+    event:'家賃は毎週やってくる。30日で10万貯めて、この週払いの部屋を出たい。',
+    dayStat:{ stamina:100, health:80, mood:70 },
   });
   S.codes = []; renderHome();
 }
@@ -2289,7 +2531,7 @@ applyMute();
 layout();
 loadLife();
 if(LIFE.ended || LIFE.day > RULES.days) newLife();
-else { if(!LIFE.event) LIFE.event = '今月の家賃までに、なんとか立て直したい。'; renderHome(); }
+else { if(!LIFE.event) LIFE.event = '家賃は毎週やってくる。30日で10万貯めて、この週払いの部屋を出たい。'; renderHome(); }
 updateHUD();
 requestAnimationFrame(loop);
 })();
