@@ -1672,6 +1672,38 @@ function buildRoom(){
   r.globalAlpha=.07; for(let i=0;i<7;i++) P(160-90-i*3, 142+i*8, 180+i*6, 8, '#ffd88a'); r.globalAlpha=1;
   r.globalAlpha=.18; P(0,0,RW,10,'#000'); P(0,RH-10,RW,10,'#000'); P(0,0,10,RH,'#000'); P(RW-10,0,10,RH,'#000'); r.globalAlpha=1;
 }
+// 部屋にいるじゅん（ドット絵。部屋と同じ等倍拡大で描くので絵柄が揃う）
+const JW = 24, JH = 48, JFOOT = 46;      // 足元は y=46
+let junCv = null;
+function buildJunPixel(){
+  junCv = document.createElement('canvas'); junCv.width = JW; junCv.height = JH;
+  const j = junCv.getContext('2d');
+  const P = (x,y,w,h,c) => { j.fillStyle = c; j.fillRect(x,y,w,h); };
+  const HAIR='#2b2620', SKIN='#efc79c', SKIN2='#e7bd93', TOP='#4a6a8c', TOP2='#3c5876', TOP3='#5d7fa2',
+        PANTS='#2f3a48', SHOE='#20262e', EYE='#20242b';
+  // 影
+  P(4,45,16,2,'rgba(0,0,0,.22)'); P(6,47,12,1,'rgba(0,0,0,.14)');
+  // 髪と顔
+  P(8,2,8,1,HAIR); P(7,3,10,1,HAIR); P(6,4,12,4,HAIR);
+  P(6,8,2,1,HAIR); P(8,8,8,1,SKIN); P(16,8,2,1,HAIR);
+  P(6,9,1,3,HAIR);  P(17,9,1,3,HAIR);
+  P(7,9,10,5,SKIN); P(8,14,8,1,SKIN); P(9,15,6,1,SKIN2);
+  P(9,11,2,2,EYE);  P(13,11,2,2,EYE);
+  P(11,13,2,1,'#d9a97f');
+  // 首
+  P(10,16,4,2,SKIN2);
+  // 上着
+  P(6,18,12,13,TOP); P(6,18,12,2,TOP3); P(6,28,12,3,TOP2);
+  P(11,18,2,10,'rgba(0,0,0,.10)');
+  // 腕と手（胴より一段暗くして輪郭を出す）
+  P(3,19,3,12,TOP2); P(18,19,3,12,TOP2);
+  P(5,19,1,12,'rgba(0,0,0,.12)'); P(18,19,1,12,'rgba(0,0,0,.12)');
+  P(3,31,3,2,SKIN2); P(18,31,3,2,SKIN2);
+  // ズボン
+  P(7,31,4,11,PANTS); P(13,31,4,11,PANTS); P(7,31,10,1,TOP2);
+  // 靴
+  P(6,42,5,4,SHOE); P(13,42,5,4,SHOE);
+}
 function drawOwned(sc, ox, oy){
   // 買った家具を部屋座標(RW,RH基準)に重ねる。sc/ox/oy はroomCvの表示変換
   const owned = LIFE.owned || [];
@@ -1693,6 +1725,12 @@ function drawRoom(){
   ctx.save(); ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = '#2a2530'; ctx.fillRect(0,0,W,H);
   ctx.drawImage(roomCv, ox, oy, dw, dh);
+  // じゅん（布団のわきに立っている。呼吸ぶんだけ1ドット上下する）
+  if(!junCv) buildJunPixel();
+  const breathe = Math.sin(S.t*1.7) > .55 ? 1 : 0;
+  const jx = 178, jy = 148 + breathe;                       // 部屋座標での足元（布団の奥に立つ）
+  ctx.drawImage(junCv, ox + Math.round((jx - JW/2)*scale), oy + Math.round((jy - JFOOT)*scale),
+                Math.ceil(JW*scale), Math.ceil(JH*scale));
   drawOwned(scale, ox, oy);
   const flick = .82 + Math.sin(S.t*2.1)*.05 + Math.sin(S.t*7.3)*.03;
   const g = ctx.createRadialGradient(W*.5, H*.18, 10, W*.5, H*.3, H*.75);
