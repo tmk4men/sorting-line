@@ -1015,9 +1015,11 @@ function endDrag(){
   const b = S.boxes.find(o => o.id === DRAG.id);
   if(b){
     b.held = 0;
-    const step = LAY.laneY[1] - LAY.laneY[0];
-    const n = Math.round(DRAG.dy / (step*0.72));   // 1レーンぶんのドラッグ＝1レーン移動（真ん中に置ける）
-    if(n !== 0) moveLane(b, clamp(n, -2, 2));
+    // 離した位置にいちばん近いレーンへ置く（真ん中もそのまま置ける）
+    const y = clamp(LAY.laneY[b.lane] + DRAG.dy, LAY.laneY[0], LAY.laneY[LANES-1]);
+    let nl = b.lane, best = Infinity;
+    for(let l=0;l<LANES;l++){ const d = Math.abs(y - LAY.laneY[l]); if(d < best){ best = d; nl = l; } }
+    if(nl !== b.lane) moveLane(b, nl - b.lane);
   }
   DRAG.id = null; DRAG.dy = 0;
 }
@@ -1238,8 +1240,11 @@ function updateLine(dt){
   for(const b of S.boxes){
     b.x -= v*dt;
     if(swipe){
-      const target = LAY.laneY[b.lane] + (DRAG.id === b.id ? clamp(DRAG.dy, -laneStep*1.1, laneStep*1.1)*.55 : 0);
-      b.y += (target - b.y) * Math.min(1, dt*16);
+      // つまんでいる間は指にそのまま追従（レーン帯の中でクランプ）。離した位置の最寄りレーンに置く
+      const target = DRAG.id === b.id
+        ? clamp(LAY.laneY[b.lane] + DRAG.dy, LAY.laneY[0], LAY.laneY[LANES-1])
+        : LAY.laneY[b.lane];
+      b.y += (target - b.y) * Math.min(1, dt*24);
     }
     if(b.enterT === null && b.x + b.w/2 <= LAY.W) b.enterT = S.t;
     if(b.hitFx>0)   b.hitFx   = Math.max(0, b.hitFx - dt*4);
