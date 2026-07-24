@@ -29,11 +29,11 @@
   /* ---------- HUD ---------- */
   .hud{
     position:absolute;top:0;left:0;right:0;z-index:6;
-    display:none;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top,0px)) 56px 8px 10px;
+    display:flex;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top,0px)) 56px 8px 10px;
     background:linear-gradient(180deg,rgba(6,9,13,.82),rgba(6,9,13,0));
-    pointer-events:none;
+    pointer-events:none;visibility:hidden;              /* 高さを測れるよう display は保つ */
   }
-  body.playing .hud{display:flex}
+  body.playing .hud{visibility:visible}
   .pill{
     display:flex;flex-direction:column;gap:1px;padding:6px 12px;border-radius:11px;
     background:rgba(17,23,30,.72);border:1px solid rgba(255,255,255,.06);
@@ -132,8 +132,9 @@
   .card2:active{transform:translateY(0)}
   .card2[disabled]{opacity:.42;cursor:not-allowed;filter:grayscale(.35)}
   .card2 .cn{font-size:15.5px;font-weight:900;letter-spacing:.02em;display:flex;align-items:center;gap:9px}
-  .card2 .cn .ci{width:30px;height:30px;flex:0 0 auto;border-radius:9px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center}
-  .card2 .cn .ci svg{width:20px;height:20px}
+  .card2 .cn .ci{width:36px;height:36px;flex:0 0 auto;border-radius:11px;background:rgba(255,255,255,.055);
+                 border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center}
+  .card2 .cn .ci svg{width:25px;height:25px}
   .card2 .cd{font-size:11.5px;color:var(--sub);line-height:1.55}
   .card2 .cm{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
   .card2 .cw{font:800 18px/1 "Consolas",monospace;color:var(--accent)}
@@ -452,7 +453,11 @@ function layout(){
     cardW:  Math.round((portrait?118:134)*u),
     cardH:  Math.round((portrait?54:58)*u),
   });
-  LAY.top = Math.round((portrait?60:54)*u);           // HUDぶんの上部余白
+  // HUDぶんの上部余白（実際のHUDの高さを測って、伝票カードが重ならないようにする）
+  const hudEl = document.getElementById('hud');
+  const hudH  = hudEl ? hudEl.offsetHeight : 0;
+  LAY.top = Math.max(Math.round((portrait?60:54)*u), Math.round(hudH + 6*u));
+  LAY.boardH = Math.max(LAY.boardH, LAY.cardH + Math.round(12*u));   // 伝票カードが必ず収まる高さ
   LAY.boardBottom = LAY.top + LAY.boardH;
   LAY.floorY = Math.round(cssH - (portrait?118:92)*u);
   const area = LAY.floorY - LAY.boardBottom, step = area/LANES;
@@ -460,7 +465,6 @@ function layout(){
   for(let i=0;i<LANES;i++) LAY.laneY.push(Math.round(LAY.boardBottom + step*(i+.5)));
   LAY.k = cssW/960;                 // 横断時間を一定に保つ速度スケール
   LAY.minGap = LAY.boxW*1.6;
-  LAY.cage = {x: Math.round(LAY.chuteW + 42*u), y: LAY.floorY + (cssH-LAY.floorY)*0.42};
   LAY.shafts = [cssW*0.16, cssW*0.48, cssW*0.79];
   LAY.gridX0 = LAY.chuteW;
   LAY.cols   = portrait ? 4 : 6;
@@ -503,8 +507,6 @@ const CFG = {
 
 // ---------- 遊ぶ ----------
 const PLAYS = [
-  {id:'walk',  n:'散歩する',        d:'金はかからない。気分が少し晴れる。',
-   cost:0,    mood:12, stamina:-4,  mins:60},
   {id:'game',  n:'ゲームセンター',    d:'クレーンとメダル。そこそこ発散できる。',
    cost:1500, mood:24, stamina:-6,  mins:90},
   {id:'drink', n:'居酒屋で一杯',      d:'気分は上がるが、体調も財布も大きく削れる。',
@@ -641,7 +643,7 @@ const S = {
   level:1, lives:CFG.maxLives,
   codes:[], zones:{},
   shake:0, flash:0, flashColor:'255,90,77',
-  banner:null, boardPulse:0, cagePop:0, chuteAlert:0,
+  banner:null, boardPulse:0, chuteAlert:0,
   laneAlert:[0,0,0],
   demo:[], demoTimer:0, motes:[],
   hero:{ col:1, lane:1, px:0, py:0, tx:0, ty:0, step:0, bob:0, reach:0 },
@@ -1058,10 +1060,11 @@ function update(dt){
   for(const f of S.flying){
     f.t += dt;
     const p = clamp(f.t/f.dur, 0, 1), e = 1 - Math.pow(1-p, 2.2);
-    f.x = lerp(f.sx, LAY.cage.x, e);
-    f.y = lerp(f.sy, LAY.cage.y-18, e) - Math.sin(p*Math.PI)*90;
-    f.scale = 1 - .62*p; f.rot = p * (f.sx > LAY.cage.x ? -.7 : .7);
-    if(p >= 1 && !f.done){ f.done = true; S.cagePop = 1; SFX.land(); burst(LAY.cage.x, LAY.cage.y-14, '255,176,32', 8, 110); }
+    const tx = LAY.chuteW*0.5;                     // シュート（左の投入口）へ送る
+    f.x = lerp(f.sx, tx, e);
+    f.y = f.sy - Math.sin(p*Math.PI)*42;
+    f.scale = 1 - .55*p; f.rot = -p*.5; f.alpha = 1 - Math.pow(p, 2.4);
+    if(p >= 1 && !f.done){ f.done = true; SFX.land(); burst(tx, f.sy, '255,176,32', 8, 110); }
   }
   S.flying = S.flying.filter(f => f.t < f.dur + .02);
   for(const p of S.fx){ p.t += dt; p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 640*dt; }
@@ -1076,7 +1079,6 @@ function update(dt){
   S.shake = Math.max(0, S.shake - dt*3.2);
   S.flash = Math.max(0, S.flash - dt*2.2);
   S.boardPulse = Math.max(0, S.boardPulse - dt*.55);
-  S.cagePop = Math.max(0, S.cagePop - dt*3.4);
   S.chuteAlert = Math.max(0, S.chuteAlert - dt*1.4);
   for(let i=0;i<LANES;i++) S.laneAlert[i] = Math.max(0, S.laneAlert[i] - dt*1.4);
   if(S.banner){ S.banner.t += dt; if(S.banner.t > 1.9) S.banner = null; }
@@ -1274,7 +1276,7 @@ function drawBoard(){
   ctx.fillStyle = g; ctx.fillRect(0,0,W,boardH);
   ctx.fillStyle = '#0a0e12'; ctx.fillRect(0,boardH-4,W,4);
   ctx.fillStyle = 'rgba(255,176,32,.32)'; ctx.fillRect(0,boardH-4,W,1.5);
-  const labelY = F(15), cardY = Math.round(boardH*0.16);
+  const labelY = F(15), cardY = Math.round((boardH - cardH)/2);
   let x = F(96);
   ctx.textAlign = 'left'; ctx.fillStyle = '#5d7085'; ctx.font = '700 10px "Yu Gothic UI", sans-serif';
   ctx.fillText(JOB ? JOB.short : '本日の担当', F(14), labelY);
@@ -1318,26 +1320,6 @@ function drawFloor(){
   ctx.fillStyle = g; ctx.fillRect(0, floorY, W, 34);
   ctx.strokeStyle = 'rgba(255,176,32,.16)'; ctx.lineWidth = 3; ctx.setLineDash([16,12]);
   ctx.beginPath(); ctx.moveTo(0, floorY+9); ctx.lineTo(W, floorY+9); ctx.stroke(); ctx.setLineDash([]);
-  drawCage();
-}
-function drawCage(){
-  const pop = S.cagePop;
-  ctx.save(); ctx.translate(LAY.cage.x, LAY.cage.y + pop*3); ctx.scale(LAY.u, LAY.u);
-  const w = 96, h = 62;
-  ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.beginPath(); ctx.ellipse(0, h/2+8, w*.5, 7, 0, 0, Math.PI*2); ctx.fill();
-  const stack = S.running ? Math.min(5, S.cleared) : 5;
-  for(let i=0;i<stack;i++){ ctx.fillStyle = i%2 ? '#a9793f' : '#c08a4f'; ctx.fillRect(-w/2+9 + (i%2)*6, h/2-14 - i*9, w-26, 9); }
-  ctx.strokeStyle = pop>0 ? `rgba(255,200,120,${.6+pop*.4})` : 'rgba(190,205,220,.5)'; ctx.lineWidth = 2.4; rr(-w/2,-h/2,w,h,3); ctx.stroke();
-  ctx.lineWidth = 1.1; ctx.strokeStyle = pop>0 ? 'rgba(255,200,120,.45)' : 'rgba(190,205,220,.26)';
-  for(let i=1;i<5;i++){ const x = -w/2 + w*i/5; ctx.beginPath(); ctx.moveTo(x,-h/2); ctx.lineTo(x,h/2); ctx.stroke(); }
-  for(let i=1;i<3;i++){ const y = -h/2 + h*i/3; ctx.beginPath(); ctx.moveTo(-w/2,y); ctx.lineTo(w/2,y); ctx.stroke(); }
-  ctx.fillStyle = '#2a333d'; ctx.beginPath(); ctx.arc(-w/2+12, h/2+5, 5, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(w/2-12, h/2+5, 5, 0, Math.PI*2); ctx.fill();
-  const label = !JOB || JOB.rule === 'number' ? (S.codes.join('/') || '---') : '分別';
-  const lf = label.length >= 11 ? 9 : label.length >= 7 ? 10.5 : 12;
-  const lw = label.length >= 11 ? 86 : label.length >= 7 ? 66 : 52;
-  ctx.fillStyle = '#f6f3e8'; rr(-lw/2, -h/2-18, lw, 16, 2); ctx.fill();
-  ctx.fillStyle = '#15181d'; ctx.font = `800 ${lf}px Consolas, monospace`; ctx.textAlign = 'center'; ctx.fillText(label, 0, -h/2-9.5);
-  ctx.restore();
 }
 function drawWasteIcon(type, s, tone=0){
   ctx.save(); ctx.scale(s/60, s/60);
@@ -1526,17 +1508,16 @@ function drawRegDisplay(x, y, w, h, c){
   ctx.fillStyle = '#0c1a16'; rr(x,y,w,h,8); ctx.fill();
   ctx.strokeStyle = 'rgba(90,214,196,.4)'; ctx.lineWidth = 1.4; rr(x+1,y+1,w-2,h-2,7); ctx.stroke();
   ctx.textBaseline='middle';
+  // 会計・お預かりだけを出す。おつりは自分で計算する。
   const rows = [['会計', c?('¥'+c.total.toLocaleString()):'-'], ['お預かり', c?('¥'+c.paid.toLocaleString()):'-']];
-  const rh = h*0.28;
+  const rh = h*0.34;
   rows.forEach((r,i)=>{
-    const ry = y + h*0.12 + i*rh;
-    ctx.textAlign='left'; ctx.fillStyle='#5b8f84'; ctx.font=`700 ${F(11)}px "Yu Gothic UI"`; ctx.fillText(r[0], x+F(12), ry+rh/2);
-    ctx.textAlign='right'; ctx.fillStyle='#7fe9d4'; ctx.font=`800 ${F(15)}px Consolas, monospace`; ctx.fillText(r[1], x+w-F(12), ry+rh/2);
+    const ry = y + h*0.14 + i*rh;
+    ctx.textAlign='left'; ctx.fillStyle='#5b8f84'; ctx.font=`700 ${F(12)}px "Yu Gothic UI"`; ctx.fillText(r[0], x+F(12), ry+rh/2);
+    ctx.textAlign='right'; ctx.fillStyle='#eafff9'; ctx.font=`900 ${F(23)}px Consolas, monospace`; ctx.fillText(r[1], x+w-F(12), ry+rh/2);
   });
-  // おつり（大）
-  const cy = y + h*0.74;
-  ctx.textAlign='left'; ctx.fillStyle='#5b8f84'; ctx.font=`700 ${F(12)}px "Yu Gothic UI"`; ctx.fillText('おつり', x+F(12), cy);
-  ctx.textAlign='right'; ctx.fillStyle='#eafff9'; ctx.font=`900 ${F(26)}px Consolas, monospace`; ctx.fillText(c?('¥'+c.change.toLocaleString()):'-', x+w-F(12), cy);
+  ctx.textAlign='left'; ctx.fillStyle='#4a7a70'; ctx.font=`700 ${F(10.5)}px "Yu Gothic UI"`;
+  ctx.fillText('おつりは自分で計算', x+F(12), y + h*0.88);
   ctx.restore();
 }
 
@@ -1588,12 +1569,12 @@ function drawRegister(){
   const trayTop = counterTop + H*0.1 + F(8), trayH = H*0.16;
   ctx.fillStyle = 'rgba(20,26,33,.9)'; rr(F(10), trayTop, W-F(20), trayH, F(10)); ctx.fill();
   ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth=1; rr(F(10), trayTop, W-F(20), trayH, F(10)); ctx.stroke();
-  const sum = traySum(), target = c?c.change:0;
+  const sum = traySum();
   ctx.textAlign='left'; ctx.fillStyle='#8698ab'; ctx.font=`700 ${F(11)}px "Yu Gothic UI"`; ctx.textBaseline='middle';
   ctx.fillText('お釣りトレイ（タップで戻す）', F(22), trayTop+F(14));
-  ctx.textAlign='right'; const okAmt = sum===target;
-  ctx.fillStyle = okAmt?'#3fd18b':(sum>target?'#ff9a90':'#ffd479'); ctx.font=`800 ${F(18)}px Consolas, monospace`;
-  ctx.fillText(`¥${sum.toLocaleString()} / ¥${target.toLocaleString()}`, W-F(22), trayTop+F(15));
+  ctx.textAlign='right';                                  // 正解かどうかは出さない（合計だけ）
+  ctx.fillStyle = '#eef3f8'; ctx.font=`800 ${F(18)}px Consolas, monospace`;
+  ctx.fillText(`¥${sum.toLocaleString()}`, W-F(22), trayTop+F(15));
   // トレイのチップ
   let tx = F(24); const chipY = trayTop + trayH*0.62, chipR = F(15);
   for(const d of REG.denoms){
@@ -1636,9 +1617,8 @@ function drawRegister(){
   REG.hit.push({type:'clr', x:F(10), y:by, w:clrW, h:btnH});
   // OK
   const okX = F(10)+clrW+F(10);
-  const okReady = c && sum===target;
-  const og = ctx.createLinearGradient(0,by,0,by+btnH);
-  og.addColorStop(0, okReady?'#ffe08a':'#ffcf6a'); og.addColorStop(1, okReady?'#ffb020':'#e6a326');
+  const og = ctx.createLinearGradient(0,by,0,by+btnH);   // 合っているかは色でも示さない
+  og.addColorStop(0, '#ffe08a'); og.addColorStop(1, '#ffb020');
   ctx.fillStyle = og; rr(okX, by, okW, btnH, F(13)); ctx.fill();
   ctx.fillStyle='#241804'; ctx.font=`900 ${F(19)}px "Yu Gothic UI"`; ctx.fillText('お釣りを渡す (OK)', okX+okW/2, by+btnH/2);
   REG.hit.push({type:'ok', x:okX, y:by, w:okW, h:btnH});
@@ -1836,7 +1816,7 @@ function render(){
     const order = [...S.boxes, ...S.demo].sort((a,b)=> a.lane-b.lane || b.x-a.x);
     for(const b of order) drawBox(b);
     drawChute(); drawAtmosphere(); drawFloor(); drawHero();
-    for(const f of S.flying) drawBox(f, f.scale ?? 1, f.rot ?? 0);
+    for(const f of S.flying) drawBox(f, f.scale ?? 1, f.rot ?? 0, f.alpha ?? 1);
     drawBoard(); drawEffects(); drawVignette(); drawBanner();
   }
   ctx.restore();
@@ -2002,6 +1982,22 @@ function renderWork(){
 }
 
 // ---------- 遊ぶ ----------
+function playIcon(id){
+  const sv = (col, inner) => `<svg viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+  if(id === 'drink')  return sv('#ffd479',   // 居酒屋＝ジョッキ
+    '<path d="M5.8 8.2h9v10.6a2.2 2.2 0 0 1-2.2 2.2H8a2.2 2.2 0 0 1-2.2-2.2z"/>' +
+    '<path d="M14.8 11h2.4a2.5 2.5 0 0 1 0 5h-2.4"/>' +
+    '<path d="M5.8 11.6h9" /><path d="M5.8 8.2h9v3.4h-9z" fill="#ffd479" fill-opacity=".3" stroke="none"/>' +
+    '<path d="M8.4 5.6V4.2M11.4 5.4V3.6M14.2 5.8V4.6" stroke-opacity=".75"/>');
+  if(id === 'gacha')  return sv('#5bd6c4',   // 課金＝スマホと当たりの輝き
+    '<rect x="5.2" y="2.8" width="10" height="18.4" rx="2.4"/><path d="M5.2 6.4h10M5.2 17.8h10"/>' +
+    '<rect x="7" y="8.4" width="6.4" height="7.4" rx="1" fill="#5bd6c4" fill-opacity=".25" stroke="none"/>' +
+    '<path d="M18.9 5.2l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="#5bd6c4" fill-opacity=".35"/>');
+  return sv('#c78bff',                       // ゲームセンター＝クレーンゲーム
+    '<rect x="3.4" y="3.4" width="17.2" height="17.2" rx="2.4"/><path d="M6.4 7h11.2"/><path d="M12 7v3.4"/>' +
+    '<path d="M9.7 14.8L12 10.4l2.3 4.4"/>' +
+    '<circle cx="12" cy="17.4" r="1.9" fill="#c78bff" fill-opacity=".35"/>');
+}
 function doPlay(pl){
   LIFE.money -= pl.cost;
   LIFE.stamina = clamp(LIFE.stamina + (pl.stamina||0), 0, 100);
@@ -2022,7 +2018,7 @@ function renderPlay(){
     const broke = LIFE.money < pl.cost;
     const b = document.createElement('button'); b.className = 'card2'; b.disabled = broke;
     const g = pl.gamble ? '気分 ？（当たれば大）' : `気分 +${pl.mood}`;
-    b.innerHTML = `<div class="cn">${pl.n}</div><div class="cd">${pl.d}</div>` +
+    b.innerHTML = `<div class="cn"><span class="ci">${playIcon(pl.id)}</span>${pl.n}</div><div class="cd">${pl.d}</div>` +
       `<div class="cm"><span class="cw">${pl.cost?('-'+yen(pl.cost)):'無料'}</span>` +
       `<span class="ct">${g}　${pl.mins}分${pl.health?`　体調 ${pl.health}`:''}</span></div>` +
       (broke ? '<div class="lock">お金が足りない</div>' : '');
@@ -2134,6 +2130,25 @@ function backFromShift(){
 }
 
 // ---------- スーパー → 就寝 → 精算 ----------
+function mealIcon(id){
+  const sv = (col, inner) => `<svg viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+  if(id === 'set') return sv('#ffd479',      // 幕の内＝仕切りのある弁当箱・日の丸ごはん
+    '<rect x="2.4" y="5.4" width="19.2" height="13.2" rx="2.2"/><path d="M11.6 5.4v13.2M11.6 12h10"/>' +
+    '<circle cx="7" cy="12" r="3.1" fill="#fff" fill-opacity=".9" stroke="none"/><circle cx="7" cy="12" r="1.1" fill="#d9564a" stroke="none"/>' +
+    '<path d="M14.4 8.6h5.4M14.4 15.4h5.4" stroke-opacity=".55"/>');
+  if(id === 'bento') return sv('#d9c08a',    // のり弁＝海苔をしいた弁当箱
+    '<rect x="2.4" y="5.4" width="19.2" height="13.2" rx="2.2"/>' +
+    '<rect x="5.2" y="8.2" width="13.6" height="7.6" rx="1.2" fill="#2b3543" stroke="#8fa2b6" stroke-width="1.2"/>' +
+    '<circle cx="15.4" cy="12" r="1.5" fill="#d9564a" stroke="none"/>');
+  if(id === 'onigiri') return sv('#eef3f8',  // おにぎり2個
+    '<path d="M6.3 6.9l4.4 9.4H1.9z" fill="#eef3f8" fill-opacity=".16"/><path d="M16.1 6.9l4.4 9.4h-8.8z" fill="#eef3f8" fill-opacity=".16"/>' +
+    '<path d="M4.1 14h4.4M13.9 14h4.4" stroke="#9fb2c6" stroke-width="2.8"/>');
+  if(id === 'cup') return sv('#ff9a90',      // カップ麺
+    '<path d="M6.4 9.6h11.2l-1.3 9.8H7.7z"/><rect x="4.7" y="6.6" width="14.6" height="3" rx="1.2" fill="#ff9a90" fill-opacity=".28"/>' +
+    '<path d="M9.4 4.4c1.1-1 .1-1.9 1.1-2.9M14.1 4.4c1.1-1 .1-1.9 1.1-2.9" stroke-opacity=".7"/>');
+  return sv('#8698ab',                       // 我慢する＝からっぽの茶碗
+    '<path d="M3.4 11.4h17.2a8.6 8.6 0 0 1-17.2 0z"/><path d="M7.8 20.4h8.4"/><path d="M8.4 7.9h7.2" stroke-dasharray="2 2.8" stroke-opacity=".7"/>');
+}
 function renderMarket(){
   leaveWork(); S.scene = 'market'; stopBGM(); startBGM('room');
   const el = $('marketList'); el.innerHTML = '';
@@ -2141,7 +2156,7 @@ function renderMarket(){
     const broke = LIFE.money < meal.cost;
     const b = document.createElement('button'); b.className = 'card2'; b.disabled = broke;
     const he = meal.health;
-    b.innerHTML = `<div class="cn">${meal.n}</div><div class="cd">${meal.d}</div>` +
+    b.innerHTML = `<div class="cn"><span class="ci">${mealIcon(meal.id)}</span>${meal.n}</div><div class="cd">${meal.d}</div>` +
       `<div class="cm"><span class="cw">${meal.cost?('-'+yen(meal.cost)):'¥0'}</span>` +
       `<span class="ct">体力 +${meal.stamina}　体調 ${he>=0?'+':''}${he}</span></div>` +
       (broke ? '<div class="lock">お金が足りない</div>' : '');
@@ -2227,6 +2242,8 @@ $('btnNextDay').addEventListener('click', nextDay);
 $('btnRestart').addEventListener('click', newLife);
 window.addEventListener('resize', layout);
 window.addEventListener('orientationchange', () => setTimeout(layout, 150));
+// 操作パッドの出入りでステージの高さが変わるので、そのたびに組み直す
+if(window.ResizeObserver) new ResizeObserver(() => layout()).observe(document.querySelector('.stage'));
 if(location.search.indexOf('debug') >= 0){ window.__S = S; window.__LIFE = LIFE; window.__JOBS = JOBS; window.__REG = REG; window.__start = startShift; }
 
 // ---------- 初期化 ----------
